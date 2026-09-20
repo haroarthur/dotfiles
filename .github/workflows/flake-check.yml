@@ -1,0 +1,35 @@
+# The build gate, run by the forge instead of by hand.
+#
+# `nix flake check` builds wsl-ubuntu-build and runs the wsl-ubuntu-safe guard (see flake.nix), so a
+# pull request that drops Herdr or zsh from the profile goes red here rather than at a live switch.
+# It proves the generation, never the machine: nothing here switches, activates, or touches a host. --no-update-lock-file keeps flake.lock
+# exactly as committed, so a green run is a statement about this revision.
+#
+# It covers the Mac too, on this Linux runner: the `mac-eval` check in flake.nix forces
+# `darwinConfigurations.mac` to evaluate without building a Darwin system, so a broken Mac
+# configuration is red here rather than on the Mac's first day. Both hosts share pkgs/shell.nix, so
+# a shell change is checked on both.
+#
+# Every flake input is a public repository, so no secret is needed; the checkout of this private
+# repo and the GitHub API quota Nix spends on those inputs both ride on the built-in GITHUB_TOKEN.
+name: flake check
+
+on:
+  pull_request:
+  push:
+    branches: [main]
+
+permissions:
+  contents: read
+
+jobs:
+  flake-check:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+
+      - uses: cachix/install-nix-action@13d8dd58da0234aa297dedd986986ccb8e7f3e24 # v31.11.1
+        with:
+          github_access_token: ${{ secrets.GITHUB_TOKEN }}
+
+      - run: nix flake check --no-update-lock-file

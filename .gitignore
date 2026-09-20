@@ -1,0 +1,9 @@
+result
+result-*
+.direnv/
+.pre-commit-config.yaml
+
+# home/.config/herdr holds one authored file: the config.toml seed. Anything else there is Herdr
+# runtime state (sockets, logs, session files that can carry terminal output) and must never be committed.
+home/.config/herdr/*
+!home/.config/herdr/config.toml

@@ -1,0 +1,40 @@
+# Owns the one list of installer-managed tools this fleet runs. install-tools.sh installs every row
+# that names an npm package; doctor.sh checks every row. Adding or swapping a tool is one line here
+# and a re-run of both - no rebuild, because none of this is in the Nix packing. The base packages
+# are: they stay plain names in hosts/wsl-ubuntu.nix or hosts/mac.nix.
+#
+# A tool with its own installer keeps its step in install-tools.sh - a step is a paragraph of
+# reasons, not a name - and names itself here only so the doctor knows to check it.
+#
+# Four whitespace-separated columns, '-' where a column does not apply:
+#   tool     the executable's name, which is what the doctor looks for
+#   npm      the npm package that provides it; '-' for its own installer, or for Nix's packing
+#   check    run  = execute `<tool> --version`, because a stale shim of the right name resolves
+#                  under `command -v` and then fails to exec
+#            path = `command -v` is enough
+#            -    = installed but not asserted
+#   pane     pane = a live Herdr pane's environment must resolve it, else an agent cannot call it
+#
+# tool                npm                                check  pane
+claude                -                                  run    pane
+codex                 @openai/codex                      run    -
+# `pi` must be named in full: plain `pi` on npm is an unrelated package about the digits of pi that
+# installs a `pi` binary anyway, so every check below would pass on the wrong tool.
+pi                    @earendil-works/pi-coding-agent    run    -
+cursor-agent          -                                  run    -
+grok                  -                                  run    -
+no-mistakes           -                                  run    pane
+treehouse             -                                  path   pane
+gh-axi                gh-axi                             path   pane
+tasks-axi             tasks-axi                          path   pane
+lavish-axi            lavish-axi                         path   pane
+chrome-devtools-axi   chrome-devtools-axi                path   pane
+quota-axi             quota-axi                          path   pane
+gnhf                  gnhf                               path   -
+# Not asserted, so its install is allowed to fail on its own without failing the batch beside it.
+backpass              backpass                           -      -
+node                  -                                  path   -
+npx                   -                                  path   -
+gh                    -                                  path   -
+gcloud                -                                  path   -
+bq                    -                                  path   -

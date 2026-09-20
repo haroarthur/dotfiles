@@ -1,0 +1,96 @@
+# Do the entry scripts still bring a machine up? `nix flake check` proves the generation; this runs
+# the scripts themselves on runners that start with nothing, which is the one thing a build cannot
+# say anything about.
+#
+# It works because phase 1 needs no login. Everything bootstrap.sh and bootstrap-mac.sh do - the
+# Determinate installer, this flake's pinned public inputs, the Home Manager or nix-darwin switch,
+# the tool installers - is public, so a runner with no credential is a fair stand-in for a fresh
+# machine. Phase 2 is the part that starts at `gh auth login` (the private skills checkout and
+# Firstmate), and none of it is here or could be: no PAT is minted for CI on purpose. The Windows
+# side is phase 1 too - windows.ps1 needs no login.
+#
+# WHAT GATES A JOB: the bootstrap script's own exit code, run to the end. `doctor.sh` is printed as
+# evidence, never as the gate - it is advisory on purpose. It runs under a login shell, because a PATH
+# no human ever sees proves nothing, and it counts what a login owns as "phase 2" rather than as FAIL,
+# so a phase-1 FAIL in either job below is a real finding about the machine and not about the check.
+#
+# WHAT THESE JOBS CANNOT COVER: the Windows side - wsl --install, WezTerm, the font, the profile files.
+# windows.ps1 is parsed by pwsh on the Linux runner, which is as far as a non-Windows machine goes.
+# Nor anything WSL-specific: WSLg, the /mnt/c bridge, a WezTerm pane, or a terminal to answer the
+# account prompt at - with none, the scripts take the rewrite themselves and say so.
+#
+# PR-triggered only, and only for the paths that can change what a bootstrap does. There is no
+# schedule and no push trigger: this spends a mac runner, and it answers a question a pull request
+# asks rather than one the clock asks.
+name: bootstrap check
+
+on:
+  pull_request:
+    paths:
+      - "hosts/**"
+      - "pkgs/**"
+      - "flake.*"
+      - "bootstrap*.sh"
+      - "install-tools.sh"
+      - "windows.ps1"
+      - "doctor.sh"
+      - "tools.list"
+      - "home/**"
+
+permissions:
+  contents: read
+
+jobs:
+  mac-bootstrap:
+    # Apple Silicon, the machine hosts/darwin-mac.nix is written for. The runner is taken as it
+    # comes: nothing here prepares it into looking like a fresh Mac.
+    runs-on: macos-latest
+    timeout-minutes: 90
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          path: dotfiles
+
+      # The gate: Determinate Nix, the account name settled against the runner's own, the
+      # nix-darwin switch with its Homebrew casks, then install-tools.sh - which now completes
+      # without the private skills checkout, printing the phase-2 line instead.
+      - name: bootstrap-mac.sh
+        run: ./dotfiles/bootstrap-mac.sh
+
+      - name: doctor.sh (evidence, not a gate)
+        if: always()
+        # A login zsh, so PATH is the one a human gets: nix-darwin sets it in /etc/zshenv and Home
+        # Manager prepends ~/.local/bin from ~/.zshenv, and a bare `run:` step reads neither.
+        run: zsh -lc './dotfiles/doctor.sh || true'
+
+  wsl-bootstrap:
+    # Not WSL - a plain Linux runner, which is as close as a hosted machine gets. What it shares
+    # with a fresh WSL box is everything phase 1 touches; what it does not have is in the header.
+    runs-on: ubuntu-latest
+    timeout-minutes: 60
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          path: dotfiles
+
+      # The gate: phase 1, start to end, on a runner that has never logged in anywhere.
+      - name: bootstrap.sh
+        run: ./dotfiles/bootstrap.sh
+
+      # windows.ps1 cannot be run here, but it can be read. pwsh is on this image, so a syntax
+      # error in the Windows entry point is caught by a pull request rather than on a fresh notebook
+      # with no other machine to fix it from.
+      - name: windows.ps1 parses
+        run: |
+          # shellcheck disable=SC2016  # $null and $e are PowerShell's, and must not expand here
+          pwsh -NoProfile -Command '
+            $e = $null
+            [System.Management.Automation.Language.Parser]::ParseFile("dotfiles/windows.ps1", [ref]$null, [ref]$e) | Out-Null
+            if ($e) { $e | ForEach-Object { $_.Message }; exit 1 }
+            "windows.ps1 parses"'
+
+      - name: doctor.sh (evidence, not a gate)
+        if: always()
+        # A login bash, for the same reason: Home Manager's ~/.profile is what puts ~/.local/bin and
+        # ~/bin on PATH, and a bare `run:` step never reads it.
+        run: bash -lc './dotfiles/doctor.sh || true'
