@@ -163,8 +163,9 @@ Herdr, and activating that one stops every agent pane. No flag or variable overr
 a broken `hosts/mac.nix` goes red here rather than on the Mac's first day. CI runs it on every pull
 request and push to `main`. The full bootstrap on clean macOS and Linux runners
 ([bootstrap-check.yml](.github/workflows/bootstrap-check.yml)) is opt-in: it runs only when a pull
-request changes an entry script or carries the `bootstrap` label, and it is never a required check.
-Run `nix fmt` before committing, and `git add` new files - Nix cannot see them otherwise.
+request changes `bootstrap*.sh`, `install-tools.sh`, `windows.ps1`, or the `tools.list` input, or when
+it carries the `bootstrap` label. It is never a required check. Run `nix fmt` before committing, and
+`git add` new files - Nix cannot see them otherwise.
 
 ### The shell, WezTerm and Herdr
 

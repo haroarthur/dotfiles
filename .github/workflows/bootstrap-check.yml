@@ -20,8 +20,8 @@
 # account prompt at - with none, the scripts take the rewrite themselves and say so.
 #
 # OPT-IN, because it spends a mac runner and a full bootstrap on each OS: a pull request runs it when
-# it carries the `bootstrap` label, or when it changes an entry script itself - bootstrap*.sh,
-# install-tools.sh, windows.ps1, or tools.list, which counts because install-tools.sh reads it.
+# it carries the `bootstrap` label, or when it changes bootstrap*.sh, install-tools.sh, windows.ps1,
+# or tools.list, which counts because install-tools.sh reads it.
 # Anything else - a hosts/ or home/ edit, a session variable, a seed - is proven by flake-check.yml
 # on every pull request; label it `bootstrap` when a change needs a real switch to show - a cask, a
 # unit, a Mac package. There is no schedule and no push trigger: this answers a question a pull
