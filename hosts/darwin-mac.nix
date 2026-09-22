@@ -44,6 +44,7 @@
   # Homebrew is Mac-only: WezTerm and Claude as casks, Herdr as an upstream brew formula.
   homebrew = {
     enable = true;
+    # Leave onActivation.upgrade at its false default: rebuilds must not upgrade installed brews.
     onActivation.cleanup = "uninstall"; # zap would also delete a cask's config dirs; Claude config must survive claude-code leaving the cask list
     onActivation.autoUpdate = false; # pin bumps are attended; do not phone home on every switch
     onActivation.extraFlags = [ "--force" ];
