@@ -21,10 +21,11 @@
 #
 # OPT-IN, because it spends a mac runner and a full bootstrap on each OS: a pull request runs it when
 # it carries the `bootstrap` label, or when it changes an entry script itself - bootstrap*.sh,
-# install-tools.sh, windows.ps1, doctor.sh, tools.list or flake.lock. Anything else - a hosts/ or
-# home/ edit, a session variable, a seed - is proven by flake-check.yml on every pull request; label
-# it `bootstrap` when a change needs a real switch to show - a cask, a unit, a Mac package. There is
-# no schedule and no push trigger: this answers a question a pull request asks.
+# install-tools.sh, windows.ps1, or tools.list, which counts because install-tools.sh reads it.
+# Anything else - a hosts/ or home/ edit, a session variable, a seed - is proven by flake-check.yml
+# on every pull request; label it `bootstrap` when a change needs a real switch to show - a cask, a
+# unit, a Mac package. There is no schedule and no push trigger: this answers a question a pull
+# request asks.
 #
 # `paths:` cannot express that rule: GitHub filters every event against it, the `labeled` one too,
 # so a label on a pull request outside those paths would never fire. The `gate` job decides instead,
@@ -55,7 +56,7 @@ jobs:
           LABELED: ${{ contains(github.event.pull_request.labels.*.name, 'bootstrap') }}
           PR: ${{ github.event.pull_request.number }}
           # The header's list, as whole repository paths.
-          ENTRY_SCRIPTS: 'bootstrap[^/]*\.sh|install-tools\.sh|windows\.ps1|doctor\.sh|tools\.list|flake\.lock'
+          ENTRY_SCRIPTS: 'bootstrap[^/]*\.sh|install-tools\.sh|windows\.ps1|tools\.list'
         run: |
           run=false
           if [ "$ACTION" = labeled ]; then
