@@ -66,7 +66,7 @@ jobs:
             run=true
           else
             # Captured first: `grep -q` stopping early would fail a pipe under the step's pipefail.
-            files="$(gh api --paginate "repos/$GITHUB_REPOSITORY/pulls/$PR/files" --jq '.[].filename')"
+            files="$(gh api --paginate "repos/$GITHUB_REPOSITORY/pulls/$PR/files" --jq '.[] | .filename, (.previous_filename // empty)')"
             if grep -qxE "$ENTRY_SCRIPTS" <<<"$files"; then run=true; fi
           fi
           echo "run=$run" | tee -a "$GITHUB_OUTPUT"
