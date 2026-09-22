@@ -118,7 +118,8 @@ contract - it only means phase 2's work happens inside phase 1's last step.
    settles the account name against `whoami`, builds the `wsl-ubuntu-safe` guard, links the clone to
    `~/.dotfiles`, runs the first switch, and finishes in [`install-tools.sh`](install-tools.sh).
 4. Everything else comes with that last step: Herdr, no-mistakes, the Google Cloud SDK, the Grok CLI,
-   the Chrome `.deb` that `chrome-devtools-axi` drives, and - the login being already in place - the
+   Claude Code's compact-adviser plugin ([below](#compact-adviser)), the Chrome `.deb` that
+   `chrome-devtools-axi` drives, and - the login being already in place - the
    private `~/.agents` checkout and its skills. `~/.claude/skills` already links to `~/.agents/skills`.
    The Chrome step runs `sudo apt-get`, so it asks for your password as it goes; the Mac takes brews
    and casks instead.
@@ -160,8 +161,11 @@ Herdr, and activating that one stops every agent pane. No flag or variable overr
 
 **`nix flake check`** builds the WSL generation, runs that guard, and evaluates the Mac on Linux, so
 a broken `hosts/mac.nix` goes red here rather than on the Mac's first day. CI runs it on every pull
-request and push to `main`. Run `nix fmt` before committing, and `git add` new files - Nix cannot
-see them otherwise.
+request and push to `main`. The full bootstrap on clean macOS and Linux runners
+([bootstrap-check.yml](.github/workflows/bootstrap-check.yml)) is opt-in: it runs only when a pull
+request changes `bootstrap*.sh`, `install-tools.sh`, `windows.ps1`, or the `tools.list` input, or when
+it carries the `bootstrap` label. It is never a required check. Run `nix fmt` before committing, and
+`git add` new files - Nix cannot see them otherwise.
 
 ### The shell, WezTerm and Herdr
 
@@ -228,6 +232,24 @@ home/analytics ... <that home>/data` - and that is reasoned, not tested. This no
 home, `~/firstmate` on `home/main`, which is what the recipe above was checked against; both
 second-mate homes are archived under `~/fleet-archive`, so nothing here proved their path end to end.
 
+### compact-adviser
+
+[compact-adviser](https://github.com/kunchenguid/compact-adviser) tells a Claude Code or Pi session
+when it is safe to `/compact`.
+
+- **Claude Code:** `install-tools.sh` installs the plugin. It loads only while
+  `CLAUDE_CODE_ENABLE_FUNCTION_HOOKS=1`, which [hosts/common.nix](hosts/common.nix) exports to every
+  login shell - the same switch turns on Firstmate's Calm mod.
+- **Pi:** `npm:compact-adviser@0.1.6` is in the `settings.json` seed, pinned like the packages
+  beside it, and Pi installs a listed package when it starts. The seed is day-one content, never
+  re-applied to a live host, so a host whose settings predate it runs
+  `pi install npm:compact-adviser@0.1.6` once.
+
+**The key** is a TypeSafe API key - a secret, so never in this repository. Once per machine, either
+put `TYPESAFE_API_KEY=...` in a private `~/.secrets.env` outside any clone, which every login shell
+on both hosts exports ([hosts/common.nix](hosts/common.nix)), or save it once per harness through
+`/compact-adviser` in Pi and in Claude Code (once the mod has loaded).
+
 ## Make it yours
 
 1. **The account name.** [flake.nix](flake.nix) names it once, in `user = "haro";`. The bootstrap
@@ -243,7 +265,9 @@ second-mate homes are archived under `~/fleet-archive`, so nothing here proved t
    `hosts/mac.nix`. Everything an installer brings is one line in [tools.list](tools.list), which
    `install-tools.sh` and `doctor.sh` both read, so adding or swapping a tool is that line and a
    re-run of the two - never a rebuild.
-5. **Secrets.** None are here: passwords and API keys go in a `.env` in the home that needs one.
+5. **Secrets.** None are here: passwords and API keys go in a `.env` in the home that needs one, and a
+   key every shell should carry - `TYPESAFE_API_KEY` for [compact-adviser](#compact-adviser) - in a
+   private `~/.secrets.env` outside any clone, which every login shell exports.
 
 The host-specific choices to look at first are the Herdr memory ceilings in
 [pkgs/herdr/module.nix](pkgs/herdr/module.nix), sized for this box's RAM, and the `.wslconfig` in
