@@ -15,8 +15,9 @@ $ErrorActionPreference = 'Stop'
 function Step($n) { Write-Host "`n==> $n" -ForegroundColor Cyan }
 function Note($m) { Write-Host "    $m" }
 
-# The one place a distro name is written. Everything downstream reads the name off the machine.
-$distro = 'Ubuntu'
+# The one source for the distro name. Every WSL call targets it explicitly, and the generated
+# WezTerm stub receives the same value, so another default distro cannot redirect this setup.
+$distro = 'Ubuntu-24.04'
 $utf8NoBom = New-Object System.Text.UTF8Encoding($false)
 
 $wslConfig = @'
@@ -29,13 +30,15 @@ autoMemoryReclaim=gradual
 '@
 
 # WezTerm is a Windows program and reads nothing from the WSL home by itself, so this hands it the
-# real config out of the clone. One wsl.exe call resolves both the distro and the account, so no user
-# name and no distro name is written here; until WSL answers, a plain terminal is enough to fix that.
-$wezTermStub = @'
+# real config out of the clone. The template receives the distro from `$distro`, while wsl.exe
+# resolves the account; until WSL answers, a plain terminal is enough to fix that.
+$wezTermStubTemplate = @'
 local wezterm = require("wezterm")
 
 local ok, out = wezterm.run_child_process({
 	"wsl.exe",
+	"-d",
+	"__WSL_DISTRO__",
 	"-e",
 	"sh",
 	"-c",
@@ -58,13 +61,15 @@ fallback.font = wezterm.font("Hack Nerd Font")
 fallback.font_size = 15.0
 return fallback
 '@
+$wezTermStub = $wezTermStubTemplate.Replace('__WSL_DISTRO__', $distro)
 
 Step 'WSL'
 # `wsl -l -q` answers from the registry, so it is true even while a fresh install waits for its
 # reboot; the strings come back UTF-16, which PowerShell hands over with embedded NULs.
 $installed = @(wsl.exe --list --quiet 2>$null | ForEach-Object { ($_ -replace "`0", '').Trim() } | Where-Object { $_ })
-if ($installed) {
-  Note "already installed: $($installed -join ', ')"
+$targetInstalled = $installed -contains $distro
+if ($targetInstalled) {
+  Note "already installed: $distro"
 } else {
   # Needs an administrator. Without one, Windows says so itself and this stops here, which is right:
   # there is no fleet without WSL.
@@ -113,7 +118,7 @@ Note 'wrote .wslconfig and .wezterm.lua'
 Step 'Next'
 # Run out of the clone - the documented order, README.md#the-windows-side - the Ubuntu side is
 # already done and this only refreshed the Windows half. Run before it, it has to say where to go.
-$cloned = $installed -and ((wsl.exe -e sh -c 'test -d "$HOME/.dotfiles" && echo yes') -match 'yes')
+$cloned = $targetInstalled -and ((wsl.exe -d $distro -e sh -c 'test -d "$HOME/.dotfiles" && echo yes') -match 'yes')
 if ($cloned) {
   Note 'The clone is already there, so the Ubuntu side is done. Check it inside WSL: ~/.dotfiles/doctor.sh'
 } else {
@@ -121,6 +126,6 @@ if ($cloned) {
   Note 'to ~/.dotfiles, and ~/.dotfiles/bootstrap.sh. Then run this file again, out of that clone:'
   Write-Host ''
   Write-Host '      Set-ExecutionPolicy -Scope Process Bypass -Force'
-  Write-Host '      & (wsl.exe -e sh -c ''wslpath -w "$HOME/.dotfiles/windows.ps1"'')'
+  Write-Host ('      & (wsl.exe -d {0} -e sh -c ''wslpath -w "$HOME/.dotfiles/windows.ps1"'')' -f $distro)
   Write-Host ''
 }
