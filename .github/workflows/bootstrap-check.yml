@@ -19,29 +19,60 @@
 # Nor anything WSL-specific: WSLg, the /mnt/c bridge, a WezTerm pane, or a terminal to answer the
 # account prompt at - with none, the scripts take the rewrite themselves and say so.
 #
-# PR-triggered only, and only for the paths that can change what a bootstrap does. There is no
-# schedule and no push trigger: this spends a mac runner, and it answers a question a pull request
-# asks rather than one the clock asks.
+# OPT-IN, because it spends a mac runner and a full bootstrap on each OS: a pull request runs it when
+# it carries the `bootstrap` label, or when it changes an entry script itself - bootstrap*.sh,
+# install-tools.sh, windows.ps1, doctor.sh, tools.list or flake.lock. Anything else - a hosts/ or
+# home/ edit, a session variable, a seed - is proven by flake-check.yml on every pull request; label
+# it `bootstrap` when a change needs a real switch to show - a cask, a unit, a Mac package. There is
+# no schedule and no push trigger: this answers a question a pull request asks.
+#
+# `paths:` cannot express that rule: GitHub filters every event against it, the `labeled` one too,
+# so a label on a pull request outside those paths would never fire. The `gate` job decides instead,
+# from the event's labels and the pull request's file list. A skipped run never blocks a merge: this
+# check is not a required status on main, and must not become one - a skip would then hold every
+# pull request that did not ask for it.
 name: bootstrap check
 
 on:
   pull_request:
-    paths:
-      - "hosts/**"
-      - "pkgs/**"
-      - "flake.*"
-      - "bootstrap*.sh"
-      - "install-tools.sh"
-      - "windows.ps1"
-      - "doctor.sh"
-      - "tools.list"
-      - "home/**"
+    types: [opened, synchronize, reopened, labeled]
 
 permissions:
   contents: read
+  pull-requests: read
 
 jobs:
+  gate:
+    runs-on: ubuntu-latest
+    outputs:
+      run: ${{ steps.decide.outputs.run }}
+    steps:
+      - id: decide
+        env:
+          GH_TOKEN: ${{ github.token }}
+          ACTION: ${{ github.event.action }}
+          ADDED: ${{ github.event.label.name }}
+          LABELED: ${{ contains(github.event.pull_request.labels.*.name, 'bootstrap') }}
+          PR: ${{ github.event.pull_request.number }}
+          # The header's list, as whole repository paths.
+          ENTRY_SCRIPTS: 'bootstrap[^/]*\.sh|install-tools\.sh|windows\.ps1|doctor\.sh|tools\.list|flake\.lock'
+        run: |
+          run=false
+          if [ "$ACTION" = labeled ]; then
+            # Only the label that asks for this run; any other label changes nothing a bootstrap does.
+            if [ "$ADDED" = bootstrap ]; then run=true; fi
+          elif [ "$LABELED" = true ]; then
+            run=true
+          else
+            # Captured first: `grep -q` stopping early would fail a pipe under the step's pipefail.
+            files="$(gh api --paginate "repos/$GITHUB_REPOSITORY/pulls/$PR/files" --jq '.[].filename')"
+            if grep -qxE "$ENTRY_SCRIPTS" <<<"$files"; then run=true; fi
+          fi
+          echo "run=$run" | tee -a "$GITHUB_OUTPUT"
+
   mac-bootstrap:
+    needs: gate
+    if: needs.gate.outputs.run == 'true'
     # Apple Silicon, the machine hosts/darwin-mac.nix is written for. The runner is taken as it
     # comes: nothing here prepares it into looking like a fresh Mac.
     runs-on: macos-latest
@@ -64,6 +95,8 @@ jobs:
         run: zsh -lc './dotfiles/doctor.sh || true'
 
   wsl-bootstrap:
+    needs: gate
+    if: needs.gate.outputs.run == 'true'
     # Not WSL - a plain Linux runner, which is as close as a hosted machine gets. What it shares
     # with a fresh WSL box is everything phase 1 touches; what it does not have is in the header.
     runs-on: ubuntu-latest

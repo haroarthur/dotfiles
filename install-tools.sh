@@ -43,6 +43,20 @@ else
     || note_failure "claude.ai/install.sh"
 fi
 
+step "compact-adviser plugin for Claude Code"
+# A plugin, not a tool, so not in tools.list. It loads only while CLAUDE_CODE_ENABLE_FUNCTION_HOOKS=1,
+# which hosts/common.nix exports; the key is a one-time step by hand (README.md#compact-adviser).
+# The Claude installer lands in ~/.local/bin, which a first Mac run does not have on PATH yet.
+claude_path="$HOME/.local/bin:$PATH"
+if ! PATH="$claude_path" command -v claude >/dev/null 2>&1; then echo "    no claude - the step above says why"
+elif grep -qF '"compact-adviser@compact-adviser"' "$HOME/.claude/plugins/installed_plugins.json" 2>/dev/null; then
+  echo "    present: compact-adviser@compact-adviser"
+else
+  { PATH="$claude_path" claude plugin marketplace add kunchenguid/compact-adviser \
+    && PATH="$claude_path" claude plugin install compact-adviser@compact-adviser; } \
+    || note_failure "claude plugin install compact-adviser@compact-adviser"
+fi
+
 # Every installer below writes into ~/.local/bin. Create it ours first: treehouse sudo-creates a
 # missing target dir, and a root-owned ~/.local/bin then blocks npm's own symlinks with EACCES.
 mkdir -p "$HOME/.local/bin"

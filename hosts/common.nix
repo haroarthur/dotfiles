@@ -5,8 +5,9 @@
   ...
 }:
 
-# Owns what both hosts share: the shared npm toolchain, the rulebook links, the Claude session flags,
-# the editable pointers into home/, the one skills symlink and the Herdr config seed.
+# Owns what both hosts share: the shared npm toolchain, the rulebook links, the Claude session flags
+# and the private secrets export, the editable pointers into home/, the one skills symlink and the
+# Herdr config seed.
 
 let
   # An out-of-store link under $HOME, so an edit in the clone is live with no rebuild.
@@ -24,7 +25,17 @@ in
     CLAUDE_CODE_DISABLE_AUTO_MEMORY = "1";
     CLAUDE_CODE_DISABLE_ADAPTIVE_THINKING = "1";
     CLAUDE_CODE_DISABLE_FEEDBACK_SURVEY = "1";
+    # Claude Mods load only while this is exactly 1: the compact-adviser plugin and Firstmate's Calm mod.
+    CLAUDE_CODE_ENABLE_FUNCTION_HOOKS = "1";
   };
+
+  # Secrets never enter this repository: a private ~/.secrets.env of KEY=value lines, kept outside any
+  # clone, is exported beside the flags above - TYPESAFE_API_KEY for compact-adviser, for one
+  # (README.md#compact-adviser). The option is Home Manager-internal, but it is the one way into
+  # hm-session-vars.sh, the file every login shell on both hosts already sources.
+  home.sessionVariablesExtra = ''
+    if [ -r "$HOME/.secrets.env" ]; then set -a; . "$HOME/.secrets.env"; set +a; fi
+  '';
 
   home.file = {
     # One rulebook, linked into every harness; a link costs nothing while the harness is absent.
