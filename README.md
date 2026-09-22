@@ -63,7 +63,7 @@ stays private.
 One thing must happen before Ubuntu exists, and it is the only step that needs an administrator:
 
 ```powershell
-wsl --install -d Ubuntu
+wsl --install -d Ubuntu-24.04
 ```
 
 Reboot, launch Ubuntu, create your account - any name works; step 3 above compares
@@ -73,7 +73,7 @@ admin PowerShell, two lines:
 
 ```powershell
 Set-ExecutionPolicy -Scope Process Bypass -Force
-& (wsl.exe -e sh -c 'wslpath -w "$HOME/.dotfiles/windows.ps1"')
+& (wsl.exe -d Ubuntu-24.04 -e sh -c 'wslpath -w "$HOME/.dotfiles/windows.ps1"')
 ```
 
 **The first line is the snag, not a precaution.** A script in the clone is a file on the WSL network
@@ -81,8 +81,9 @@ share, and PowerShell refuses to load one under any policy stricter than `Bypass
 `RemoteSigned` this notebook carries, `\\wsl.localhost\<distro>\home\<user>\.dotfiles\windows.ps1`
 comes back refused as not digitally signed (`FullyQualifiedErrorId : UnauthorizedAccess`). `-Scope
 Process` lasts for that one window, changes nothing on the machine and needs no administrator of its
-own. The second line is the trick `.wezterm.lua` already uses: `wsl.exe` resolves the path, so
-neither the distro name nor the account name is ever typed.
+own. The second line is the trick `.wezterm.lua` already uses: `wsl.exe` resolves the path inside
+the explicitly selected Ubuntu 24.04 distro, so the account name is never typed and another default
+distro cannot redirect the setup.
 
 **What was proven here, and what was not.** The refusal, the `-Scope Process Bypass` that clears it,
 the `wsl.exe`-resolved path, and [`windows.ps1`](windows.ps1) parsing over that path were all
@@ -110,7 +111,7 @@ these same scripts with no credential at all
 ([bootstrap-check.yml](.github/workflows/bootstrap-check.yml)). Logging in first does not change that
 contract - it only means phase 2's work happens inside phase 1's last step.
 
-1. **Windows only:** `wsl --install -d Ubuntu` in an admin PowerShell, then reboot and create your
+1. **Windows only:** `wsl --install -d Ubuntu-24.04` in an admin PowerShell, then reboot and create your
    Ubuntu account. Skip this on a Mac.
 2. **The login and the clone** - steps 1 and 2 of **Start here**.
 3. **[`bootstrap.sh`](bootstrap.sh)** (or `bootstrap-mac.sh`) from `~/.dotfiles`. It installs Nix,
