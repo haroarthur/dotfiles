@@ -26,5 +26,7 @@
   home.packages = [
     pkgs.nerd-fonts.hack
     pkgs.gh
+    # What the quality gate and the authored skills reach for.
+    pkgs.sqlfluff
   ];
 }
