@@ -12,9 +12,8 @@ step() { printf '\n==> %s\n' "$1"; current="$1"; }
 note_failure() { failed="${failed}
   - ${current}: $1"; echo "    FAILED: $1" >&2; }
 
-# tools.list is the one list of installer-managed tools, read by this script and by doctor.sh, so a
-# tool is added or swapped by editing one line there and re-running both. Rows that name an npm
-# package are installed below; the rest keep the step further down that their own installer needs.
+# tools.list supplies npm packages below and doctor.sh's tool checks. Other rows may name tools
+# supplied by their own installer or by a host's Nix packages.
 DIR="$(cd "$(dirname "${BASH_SOURCE[0]:-$0}")" && pwd -P)"
 [ -r "$DIR/tools.list" ] || { echo "no tools.list beside $0 - this clone is incomplete" >&2; exit 2; }
 npm_pkgs=() npm_soft=() npm_bins=()

@@ -18,11 +18,12 @@ and nothing converges behind your back.
 | `bootstrap.sh` / `bootstrap-mac.sh` | A fresh machine, from nothing to a built home |
 | `rebuild.sh` / `rebuild-mac.sh` | A later change to a machine already running this |
 | `install-tools.sh` / `doctor.sh` | Install what Nix deliberately does not carry; check what a machine looks like |
-| `tools.list` | The one list of installer-managed tools both of those read: four plain columns, no rebuild |
+| `tools.list` | The doctor's tool checks and the npm packages installed by `install-tools.sh`: four plain columns |
 | `windows.ps1` | The Windows side: WSL Ubuntu, WezTerm, the Hack Nerd Font, `.wslconfig`, and the `.wezterm.lua` that loads this clone's config |
 
-The rule the packing follows: **if a tool ships an official installer, or is a plain package, use
-it. Keep Nix only where there is a concrete blocker, named in the file that keeps it.** Nothing is
+The rule the packing follows: **use official installers for tools that ship them and host packages
+for plain packages. Keep custom Nix integration only where there is a concrete blocker, named in
+the file that keeps it.** Nothing is
 hand-pinned any more; what Nix still owns for Herdr is its service and pane isolation, not its
 binary.
 
@@ -143,12 +144,12 @@ with a live fleet under it. Exit 0 means no phase-1 FAIL: what a login owns is c
 `phase 2` and what this OS cannot have as `skip`, so neither reds a healthy box. It is advisory and
 deliberately gates nothing.
 
-**[`install-tools.sh`](install-tools.sh)** runs every installer the packing does not carry, and the
-names are not restated here: [`tools.list`](tools.list) is the list, four plain columns, read by this
-script and by `doctor.sh` alike. A tool that npm provides is installed straight off that file, so
-adding or swapping one is a one-line edit and a re-run, with no rebuild - none of this is in the Nix
-packing. A tool with its own installer keeps a step here too, because a step is a paragraph of
-reasons rather than a name. The one thing this script will not do is `gh auth login`. Every step is
+**[`install-tools.sh`](install-tools.sh)** runs every installer the packing does not carry.
+[`tools.list`](tools.list) supplies its npm packages and the checks `doctor.sh` runs, including
+checks for host packages. Nix packages are declared in the host compositions and require a rebuild;
+installer-managed tools are repaired by re-running this script. A tool with its own installer keeps
+a step here too, because a step is a paragraph of reasons rather than a name. The one thing this
+script will not do is `gh auth login`. Every step is
 idempotent, so re-running it is how a machine is repaired, and a failure names which step to retry
 instead of hiding the others.
 

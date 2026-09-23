@@ -86,9 +86,8 @@ locked_skills() {
 }
 
 case "$(uname -s)" in Darwin) darwin=yes pane_shell=zsh ;; *) darwin=no pane_shell=bash ;; esac # the shell a pane comes up in
-# tools.list is the one list of installer-managed tools, read by this script and by install-tools.sh:
-# its `check` column says how a tool is proven and its `pane` column which tools a pane must resolve,
-# so a tool is added or swapped by editing one line there rather than two scripts.
+# tools.list owns these checks: `check` says how a tool is proven and `pane` which tools a pane must
+# resolve. It also supplies install-tools.sh's npm packages; Nix packages live in the host modules.
 DIR="$(cd "$(dirname "${BASH_SOURCE[0]:-$0}")" && pwd -P)"
 [ -r "$DIR/tools.list" ] || { echo "no tools.list beside $0 - this clone is incomplete" >&2; exit 2; }
 tools_run='' tools_path='' tools_pane=''

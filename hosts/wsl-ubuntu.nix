@@ -64,6 +64,7 @@ in
     yt-dlp
     gcc
     gnumake
+    sqlfluff
   ]);
 
   home.username = user;

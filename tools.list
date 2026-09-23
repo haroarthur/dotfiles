@@ -1,7 +1,6 @@
-# Owns the one list of installer-managed tools this fleet runs. install-tools.sh installs every row
-# that names an npm package; doctor.sh checks every row. Adding or swapping a tool is one line here
-# and a re-run of both - no rebuild, because none of this is in the Nix packing. The base packages
-# are: they stay plain names in hosts/wsl-ubuntu.nix or hosts/mac.nix.
+# Owns the doctor's tool checks and install-tools.sh's npm inputs. install-tools.sh installs every
+# row that names an npm package; doctor.sh checks every asserted row. Nix packages stay in the host
+# compositions and require a rebuild; a row here asks the doctor to check the resulting tool.
 #
 # A tool with its own installer keeps its step in install-tools.sh - a step is a paragraph of
 # reasons, not a name - and names itself here only so the doctor knows to check it.
@@ -38,3 +37,4 @@ npx                   -                                  path   -
 gh                    -                                  path   -
 gcloud                -                                  path   -
 bq                    -                                  path   -
+sqlfluff              -                                  run    pane
