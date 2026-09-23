@@ -38,3 +38,4 @@ npx                   -                                  path   -
 gh                    -                                  path   -
 gcloud                -                                  path   -
 bq                    -                                  path   -
+sqlfluff              -                                  run    pane
