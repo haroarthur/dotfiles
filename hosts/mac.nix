@@ -5,7 +5,7 @@
   ...
 }:
 
-# Owns the Mac's Home Manager user: the shared shell and the font.
+# Owns the Mac's Home Manager user: the shared shell and host packages.
 
 {
   imports = [
