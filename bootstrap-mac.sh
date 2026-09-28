@@ -54,7 +54,7 @@ echo "==> Step 5: installer-managed tools"
 # Optional installer failures stay advisory, but a missing or incomplete npm toolchain must fail CI.
 # useUserPackages puts home.packages (nodejs) in /etc/profiles/per-user/$USER/bin, which /etc/zshrc adds
 # but this non-login shell never sourced; put it on PATH so install-tools.sh finds npm.
-export PATH="/etc/profiles/per-user/$REAL_USER/bin:$PATH"
+export PATH="/etc/profiles/per-user/$REAL_USER/bin:/opt/homebrew/bin:$PATH"
 install_tools_status=0
 "$DIR/install-tools.sh" || install_tools_status=$?
 if [ "$install_tools_status" -eq 2 ]; then
