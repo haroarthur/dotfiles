@@ -6,12 +6,28 @@
 }:
 
 # Owns what both hosts share: the shared npm toolchain, the rulebook links, the Claude session flags
-# and the private secrets export, the editable pointers into home/, the one skills symlink and the
-# Herdr config seed.
+# and the private secrets export, the editable pointers into home/, the one skills symlink, the
+# program settings policy and the Herdr config seed.
 
 let
   # An out-of-store link under $HOME, so an edit in the clone is live with no rebuild.
   link = path: config.lib.file.mkOutOfStoreSymlink "${config.home.homeDirectory}/${path}";
+  claudeAttributionPolicy = pkgs.writeText "claude-attribution-policy.json" (
+    builtins.toJSON {
+      attribution = {
+        commit = "";
+        pr = "";
+      };
+    }
+  );
+  cursorAttributionPolicy = pkgs.writeText "cursor-attribution-policy.json" (
+    builtins.toJSON {
+      attribution = {
+        attributeCommitsToAgent = false;
+        attributePRsToAgent = false;
+      };
+    }
+  );
 in
 {
   programs.home-manager.enable = true;
@@ -58,25 +74,46 @@ in
     ".pi/agent/models.json".source = link ".dotfiles/home/.pi/agent/models.json";
   };
 
-  # Claude's and Pi's settings.json are SEEDED, never linked, for the reason Herdr's config.toml is:
-  # both programs rewrite the file they were given - Claude its model and the dangerous-mode prompt,
-  # Pi the changelog version it last showed - and behind an out-of-store link every one of those
-  # writes landed in the git tree, so the clone was permanently dirty. The tracked file is day-one
-  # content; after that the live file belongs to the program. Nothing that must not regress lives in
-  # them: the Claude session variables above and the `cc` alias in pkgs/shell.nix are outside both.
-  home.activation.seedProgramSettings =
+  # Claude's, Cursor's and Pi's settings are writable files, never links: each program owns live
+  # preferences that must not dirty the clone. Claude and Cursor merge the tracked policy on every
+  # activation, preserving all other live keys while making attribution opt-outs non-regressing.
+  # Pi has no commit or PR attribution setting, so its tracked file remains a day-one seed only.
+  home.activation.manageProgramSettings =
     lib.hm.dag.entryBetween [ "reloadSystemd" ] [ "writeBoundary" ]
       (
         let
           seed = target: source: ''
-            seed_target="${config.home.homeDirectory}/${target}"
-            run ${pkgs.coreutils}/bin/install -d -m 0755 -- "$(${pkgs.coreutils}/bin/dirname "$seed_target")"
-            if [ ! -e "$seed_target" ] && [ ! -L "$seed_target" ]; then
-              run ${pkgs.coreutils}/bin/install -m 0644 -- ${source} "$seed_target"
+            settings_target="${config.home.homeDirectory}/${target}"
+            settings_dir="$(${pkgs.coreutils}/bin/dirname "$settings_target")"
+            run ${pkgs.coreutils}/bin/install -d -m 0755 -- "$settings_dir"
+            if [ ! -e "$settings_target" ] && [ ! -L "$settings_target" ]; then
+              run ${pkgs.coreutils}/bin/install -m 0644 -- ${source} "$settings_target"
+            fi
+          '';
+          merge = target: seedFile: policy: ''
+            settings_target="${config.home.homeDirectory}/${target}"
+            settings_dir="$(${pkgs.coreutils}/bin/dirname "$settings_target")"
+            run ${pkgs.coreutils}/bin/install -d -m 0755 -- "$settings_dir"
+            if [ ! -e "$settings_target" ] && [ ! -L "$settings_target" ]; then
+              run ${pkgs.coreutils}/bin/install -m 0644 -- ${seedFile} "$settings_target"
+            else
+              settings_tmp="$(${pkgs.coreutils}/bin/mktemp "$settings_dir/.settings.XXXXXX")"
+              if ! ${pkgs.jq}/bin/jq --slurp '.[0] * .[1]' "$settings_target" ${policy} > "$settings_tmp"; then
+                ${pkgs.coreutils}/bin/rm -f -- "$settings_tmp"
+                echo "Cannot merge managed settings into $settings_target" >&2
+                exit 1
+              fi
+              if ! ${pkgs.diffutils}/bin/cmp -s -- "$settings_target" "$settings_tmp"; then
+                run ${pkgs.coreutils}/bin/chmod 0644 "$settings_tmp"
+                run ${pkgs.coreutils}/bin/mv -f -- "$settings_tmp" "$settings_target"
+              else
+                ${pkgs.coreutils}/bin/rm -f -- "$settings_tmp"
+              fi
             fi
           '';
         in
-        seed ".claude/settings.json" ../home/.claude/settings.json
+        merge ".claude/settings.json" ../home/.claude/settings.json claudeAttributionPolicy
+        + merge ".cursor/cli-config.json" ../home/.cursor/cli-config.json cursorAttributionPolicy
         + seed ".pi/agent/settings.json" ../home/.pi/agent/settings.json
       );
 
