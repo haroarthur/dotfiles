@@ -52,7 +52,7 @@ in
     ".config/wezterm".source = link ".dotfiles/home/.config/wezterm";
 
     # Pi: only the authored files, so credentials and sessions stay local. settings.json is not here -
-    # it is seeded below, with Claude's.
+    # it is managed below, with Claude's.
     ".pi/agent/themes".source = link ".dotfiles/home/.pi/agent/themes";
     ".pi/agent/extensions".source = link ".dotfiles/home/.pi/agent/extensions";
     ".pi/agent/models.json".source = link ".dotfiles/home/.pi/agent/models.json";
