@@ -1,4 +1,8 @@
 {
+  "attribution": {
+    "commit": "",
+    "pr": ""
+  },
   "theme": "dark-ansi",
   "statusLine": {
     "type": "command",

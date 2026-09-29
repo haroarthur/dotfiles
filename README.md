@@ -14,7 +14,7 @@ and nothing converges behind your back.
 | `flake.nix` | The two configurations and the checks that gate a switch. Its one `user =` line names the account; every configuration name and home path derives from it |
 | `hosts/` | One file per machine - `wsl-ubuntu.nix`, `mac.nix` + `darwin-mac.nix` - plus `common.nix` for what they share |
 | `pkgs/` | What the hosts compose: the shared shell, and the WSL host's floor (Herdr, the host `systemctl`, the no-mistakes drop-in) |
-| `home/` | Authored files the home takes: the agent rulebook, nvim and WezTerm as live links; the Claude, Pi and Herdr configs as seeds the programs then own |
+| `home/` | Authored files the home takes: the agent rulebook, nvim and WezTerm as live links; Claude and Cursor policy merged into writable settings; Pi and Herdr seeds the programs then own |
 | `bootstrap.sh` / `bootstrap-mac.sh` | A fresh machine, from nothing to a built home |
 | `rebuild.sh` / `rebuild-mac.sh` | A later change to a machine already running this |
 | `install-tools.sh` / `doctor.sh` | Install what Nix deliberately does not carry; check what a machine looks like |
@@ -168,6 +168,45 @@ request changes `bootstrap*.sh`, `install-tools.sh`, `windows.ps1`, or the `tool
 it carries the `bootstrap` label. It is never a required check. Run `nix fmt` before committing, and
 `git add` new files - Nix cannot see them otherwise.
 
+### Agent attribution
+
+Where a harness exposes local attribution settings, attribution is switched off there rather than
+cleaned from commits or pull requests later. On either host, activation recursively merges the
+tracked policy into the live writable JSON and keeps every unrelated preference the harness has
+written:
+
+- **Claude Code:** `attribution.commit` and `attribution.pr` are empty strings in
+  [`home/.claude/settings.json`](home/.claude/settings.json). Claude's
+  [settings reference](https://code.claude.com/docs/en/settings-reference#attribution) documents
+  that empty values hide its commit trailer and PR line.
+- **Cursor Agent CLI:** both attribution booleans are false in
+  [`home/.cursor/cli-config.json`](home/.cursor/cli-config.json). Cursor's
+  [CLI configuration reference](https://cursor.com/docs/cli/reference/configuration#schema) names
+  `attribution.attributeCommitsToAgent` and `attribution.attributePRsToAgent`, including their
+  default of true.
+
+The other configured harnesses expose no local commit or PR attribution switch to deploy:
+
+- **Codex:** attribution is a remote user policy fetched from the Codex backend, not a
+  `config.toml` key. The current
+  [policy source](https://github.com/openai/codex/blob/main/codex-rs/ext/git-attribution/src/policy.rs)
+  reads `commit_attribution_enabled` from that service, while the complete
+  [local configuration reference](https://developers.openai.com/codex/config-reference) has no
+  corresponding key.
+- **Pi:** its complete [settings reference](https://github.com/earendil-works/pi/blob/main/packages/coding-agent/docs/settings.md)
+  has no git attribution setting. Pi gives the model a general shell tool rather than a separate
+  commit or pull-request publisher.
+- **Grok:** its complete [settings reference](https://docs.x.ai/build/settings/reference) has no git
+  attribution setting.
+- **OpenCode:** this repository prepares its global rulebook link even when OpenCode is absent, but
+  OpenCode's complete [configuration reference](https://opencode.ai/docs/config/) has no git
+  attribution setting.
+
+No wrapper is added for a harness that has no such setting. For every harness, the global rulebook
+still says:
+
+> When writing commit messages or PR descriptions, NEVER auto-add your agent name as co-author or an agent attribution footer such as "Generated with ..."
+
 ### The shell, WezTerm and Herdr
 
 Both hosts come up in the same shell, and [pkgs/shell.nix](pkgs/shell.nix) is all of it: zsh,
@@ -258,10 +297,10 @@ on both hosts exports ([hosts/common.nix](hosts/common.nix)), or save it once pe
 2. **The rulebook.** `home/AGENTS.md` is the one global rulebook; both machines link it into
    Claude, Codex, OpenCode, Grok and Pi. Write your own; the links do not care what is in it.
 3. **Your own configs.** WezTerm and nvim are out-of-store pointers into `home/`, so an edit in the
-   clone is live with no rebuild. Claude's and Pi's `settings.json` are **seeds**: copied once when
-   absent, and after that the live file belongs to the program that rewrites it - which is why the
-   clone no longer goes dirty every time Claude records a model. Anything that must not regress lives
-   outside them, in the session variables and the shell.
+   clone is live with no rebuild. Pi's `settings.json` is a **seed** copied once when absent. Claude
+   and Cursor also keep writable live settings, but each activation merges the attribution policy
+   from `home/` into them without replacing program-owned preferences. This is why harness rewrites
+   do not dirty the clone while attribution cannot regress after a rebuild.
 4. **Packages and tools.** Base packages are plain names in `hosts/wsl-ubuntu.nix` or
    `hosts/mac.nix`. Everything an installer brings is one line in [tools.list](tools.list), which
    `install-tools.sh` and `doctor.sh` both read, so adding or swapping a tool is that line and a
