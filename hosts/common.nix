@@ -83,7 +83,7 @@ in
               run ${pkgs.coreutils}/bin/install -m 0644 -- ${seedFile} "$settings_target"
             else
               settings_tmp="$(${pkgs.coreutils}/bin/mktemp "$settings_dir/.settings.XXXXXX")"
-              if ! ${pkgs.jq}/bin/jq --slurp '.[0] * (.[1] | {attribution})' "$settings_target" ${seedFile} > "$settings_tmp"; then
+              if ! ${pkgs.jq}/bin/jq --null-input --slurpfile policy ${seedFile} 'input * ($policy[0] | {attribution})' "$settings_target" > "$settings_tmp"; then
                 ${pkgs.coreutils}/bin/rm -f -- "$settings_tmp"
                 echo "Cannot merge managed settings into $settings_target" >&2
                 exit 1
