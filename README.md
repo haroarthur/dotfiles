@@ -202,8 +202,10 @@ The other configured harnesses expose no local commit or PR attribution switch t
   OpenCode's complete [configuration reference](https://opencode.ai/docs/config/) has no git
   attribution setting.
 
-No wrapper is added for a harness that has no such setting. The global rulebook still forbids
-agent co-author trailers for every harness.
+No wrapper is added for a harness that has no such setting. For every harness, the global rulebook
+still says:
+
+> When writing commit messages or PR descriptions, NEVER auto-add your agent name as co-author or an agent attribution footer such as "Generated with ..."
 
 ### The shell, WezTerm and Herdr
 
