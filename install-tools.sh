@@ -46,13 +46,15 @@ step "compact-adviser plugin for Claude Code"
 # A plugin, not a tool, so not in tools.list. It loads only while CLAUDE_CODE_ENABLE_FUNCTION_HOOKS=1,
 # which hosts/common.nix exports; the key is a one-time step by hand (README.md#compact-adviser).
 # The Claude installer lands in ~/.local/bin, which a first Mac run does not have on PATH yet.
+# Its stdin is /dev/null on purpose: under the piped bootstrap it is /dev/tty, where Claude's Bun
+# runtime died on a fresh Mac with `EINVAL: invalid argument, kqueue` and installed nothing.
 claude_path="$HOME/.local/bin:$PATH"
 if ! PATH="$claude_path" command -v claude >/dev/null 2>&1; then echo "    no claude - the step above says why"
 elif grep -qF '"compact-adviser@compact-adviser"' "$HOME/.claude/plugins/installed_plugins.json" 2>/dev/null; then
   echo "    present: compact-adviser@compact-adviser"
 else
   { PATH="$claude_path" claude plugin marketplace add kunchenguid/compact-adviser \
-    && PATH="$claude_path" claude plugin install compact-adviser@compact-adviser; } \
+    && PATH="$claude_path" claude plugin install compact-adviser@compact-adviser; } < /dev/null \
     || note_failure "claude plugin install compact-adviser@compact-adviser"
 fi
 
@@ -127,14 +129,20 @@ step "Google Cloud SDK (gcloud, bq)"
 # The analytics work runs on these two. The env vars are the documented way to run the installer
 # unattended, and with prompts off it edits no rc file. Each tool resolves its own SDK root through
 # the link it was called by, so a link from ~/.local/bin - already on every pane's PATH - is enough.
-if [ -x "$HOME/google-cloud-sdk/bin/gcloud" ]; then echo "    present: $HOME/google-cloud-sdk/bin/gcloud"
+# The tarball ships bin/gcloud and its installer adds bq, so an install that died halfway (no Python
+# it could use) leaves a gcloud and no bq: that half is removed and installed again, never kept.
+sdk="$HOME/google-cloud-sdk"
+if [ -x "$sdk/bin/bq" ]; then
+  if "$sdk/bin/gcloud" --version >/dev/null 2>&1; then echo "    present: $sdk/bin/gcloud"
+  else note_failure "$sdk/bin/gcloud does not run - it needs a python3 3.10+ on PATH"; fi
 else
+  rm -rf "$sdk"
   run_installer https://sdk.cloud.google.com \
     env CLOUDSDK_CORE_DISABLE_PROMPTS=1 CLOUDSDK_INSTALL_DIR="$HOME" \
     || note_failure "sdk.cloud.google.com"
 fi
 for t in gcloud bq gsutil; do
-  if [ -x "$HOME/google-cloud-sdk/bin/$t" ]; then ln -sfn "$HOME/google-cloud-sdk/bin/$t" "$HOME/.local/bin/$t"; fi
+  if [ -x "$sdk/bin/$t" ]; then ln -sfn "$sdk/bin/$t" "$HOME/.local/bin/$t"; fi
 done
 
 step "Grok CLI"

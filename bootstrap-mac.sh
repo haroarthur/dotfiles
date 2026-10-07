@@ -20,7 +20,9 @@ if [ ! -f "$DIR/flake.nix" ]; then
   [ ! -e "$HOME/.dotfiles" ] || { echo "    ~/.dotfiles already exists: run ~/.dotfiles/bootstrap-mac.sh instead." >&2; exit 1; }
   [ -e /dev/tty ] || { echo "    No terminal for 'gh auth login': clone haroarthur/dotfiles to ~/.dotfiles by hand, then run ./bootstrap-mac.sh." >&2; exit 1; }
   install_nix # git and gh come out of it: a box this fresh has neither
-  nix-shell -p gh git --run 'gh auth status >/dev/null 2>&1 || gh auth login; gh auth setup-git' < /dev/tty
+  # GH_PATH=gh: otherwise the helper git records is this throwaway nix-shell's store path, which the
+  # next garbage collection deletes - and every later clone and push with it.
+  nix-shell -p gh git --run 'gh auth status >/dev/null 2>&1 || gh auth login; GH_PATH=gh gh auth setup-git' < /dev/tty
   nix-shell -p gh git --run "git clone https://github.com/haroarthur/dotfiles.git '$HOME/.dotfiles'"
   exec "$HOME/.dotfiles/bootstrap-mac.sh" < /dev/tty
 fi
