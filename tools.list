@@ -35,6 +35,6 @@ backpass              backpass                           -      -
 node                  -                                  path   -
 npx                   -                                  path   -
 gh                    -                                  path   -
-gcloud                -                                  path   -
+gcloud                -                                  run    -
 bq                    -                                  path   -
 sqlfluff              -                                  run    pane

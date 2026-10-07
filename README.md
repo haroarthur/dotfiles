@@ -39,7 +39,7 @@ curl --proto '=https' --tlsv1.2 -sSf -L https://install.determinate.systems/nix 
 . /nix/var/nix/profiles/default/etc/profile.d/nix-daemon.sh
 
 # 2. the login, and the clone it makes possible
-nix-shell -p gh --run 'gh auth login && gh auth setup-git'
+nix-shell -p gh --run 'gh auth login && GH_PATH=gh gh auth setup-git'
 nix-shell -p gh --run 'gh repo clone haroarthur/dotfiles ~/.dotfiles'
 
 # 3. the machine, out of the clone
@@ -123,7 +123,9 @@ contract - it only means phase 2's work happens inside phase 1's last step.
    `chrome-devtools-axi` drives, and - the login being already in place - the
    private `~/.agents` checkout and its skills. `~/.claude/skills` already links to `~/.agents/skills`.
    The Chrome step runs `sudo apt-get`, so it asks for your password as it goes; the Mac takes brews
-   and casks instead.
+   and casks instead. The Mac asks for its login password earlier, for the Nix installer and again for
+   each `darwin-rebuild switch`. It needs no Xcode Command Line Tools: its `git` and `python3` come
+   from Nix.
 5. **Windows only:** the two admin-PowerShell lines above, out of the clone.
 6. `./doctor.sh`, and read it to zero FAIL.
 
