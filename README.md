@@ -129,6 +129,34 @@ contract - it only means phase 2's work happens inside phase 1's last step.
 5. **Windows only:** the two admin-PowerShell lines above, out of the clone.
 6. `./doctor.sh`, and read it to zero FAIL.
 
+### GitHub over SSH
+
+The `gh` credential helper that `gh auth setup-git` writes is the default and what the scripts set up.
+SSH is a second supported route: [`doctor.sh`](doctor.sh) passes the "git helper" line on either one.
+These steps are the ones that work on a Mac; on Linux or WSL, leave out the `UseKeychain` line and
+the `--apple-use-keychain` flag.
+
+1. Make a key with a passphrase: `ssh-keygen -t ed25519 -f ~/.ssh/id_ed25519`.
+2. On macOS, put the passphrase in the Keychain: `/usr/bin/ssh-add --apple-use-keychain ~/.ssh/id_ed25519`.
+3. Add a block to `~/.ssh/config`. `UseKeychain yes` is macOS only:
+
+   ```sshconfig
+   Host github.com
+     IdentityFile ~/.ssh/id_ed25519
+     IdentitiesOnly yes
+     AddKeysToAgent yes
+     UseKeychain yes
+   ```
+
+4. Pin GitHub's host keys from the API into `~/.ssh/known_hosts`:
+   `gh api meta --jq '.ssh_keys[] | "github.com " + .' >> ~/.ssh/known_hosts`.
+5. Register the key. The first command asks for a one-time approval in the browser:
+   `gh auth refresh -h github.com -s admin:public_key`, then `gh ssh-key add ~/.ssh/id_ed25519.pub`.
+6. Make `gh` and `git` use it: `gh config set git_protocol ssh` and
+   `git config --global url."git@github.com:".insteadOf https://github.com/`.
+7. Remove the `gh auth git-credential` helper entries from `~/.gitconfig`.
+8. Check with `ssh -T git@github.com`, which answers "successfully authenticated", and `./doctor.sh`.
+
 ## Daily use
 
 ```sh
