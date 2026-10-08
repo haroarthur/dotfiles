@@ -38,3 +38,4 @@ gh                    -                                  path   -
 gcloud                -                                  run    -
 bq                    -                                  path   -
 sqlfluff              -                                  run    pane
+shellcheck            -                                  run    -

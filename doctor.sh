@@ -71,9 +71,16 @@ browser() {
   command -v google-chrome || command -v chromium
 }
 gh_auth() { gh auth status 2>&1 | sed -n 's/.*Logged in to \([^ ]*\) account \([^ ]*\).*/\1 as \2/p'; gh auth status >/dev/null 2>&1; }
+# GitHub access is either the gh credential helper or SSH: the https->ssh url rewrite plus a key GitHub
+# accepts. The probe is non-interactive and bounded; GitHub answers a good key with exit status 1.
 git_helper() {
-  local h; h="$(git config --get credential.https://github.com.helper || git config --get --global credential.helper)"
-  echo "${h:-unset}"; [ "$h" = '!gh auth git-credential' ]
+  local h r; h="$(git config --get credential.https://github.com.helper || git config --get --global credential.helper)"
+  [ "$h" != '!gh auth git-credential' ] || { echo "$h"; return 0; }
+  r="$(git config --get-all url.git@github.com:.insteadOf)"
+  case "$r" in *https://github.com/*) ;; *) echo "${h:-unset}"; return 1 ;; esac
+  r="$(ssh -T -o BatchMode=yes -o ConnectTimeout=5 git@github.com 2>&1)"
+  case "$r" in *'successfully authenticated'*) ;; *) echo "${h:-unset}"; return 1 ;; esac
+  echo "ssh (url rewrite + key accepted)"
 }
 # `readlink -f` disagrees with itself across BSD and GNU on a dangling link, so walk the chain instead.
 skills_link() { local p="$HOME/.claude/skills"; while [ -L "$p" ]; do p="$(readlink "$p")"; done; echo "$p"; [ "$p" = "$skills" ]; }
@@ -149,7 +156,7 @@ section "browser"
 check browser "no chrome/chromium for chrome-devtools-axi" browser
 section "auth"
 phase2 "gh auth" "not logged in (run: gh auth login)" gh_auth
-phase2 "git helper" "want '!gh auth git-credential' (run: gh auth setup-git)" git_helper
+phase2 "git helper" "want '!gh auth git-credential' (run: gh auth setup-git) or SSH: an https->git@github.com: url rewrite and a key GitHub accepts (ssh -T git@github.com)" git_helper
 section "skills"
 check .claude/skills "not a symlink to ~/.agents/skills - Claude is not reading it" skills_link
 phase2 .agents/skills "missing - clone haroarthur/agents to ~/.agents" skills_dir

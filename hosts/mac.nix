@@ -35,6 +35,7 @@
     pkgs.python3
     # What the quality gate and the authored skills reach for.
     pkgs.sqlfluff
+    pkgs.shellcheck
   ];
 
   # nixpkgs wraps gh, so a bare `gh auth setup-git` records the hidden store path of `.gh-wrapped`,

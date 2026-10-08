@@ -213,6 +213,7 @@ else
 ==> PHASE 2 - one login, and this script again (README.md#a-fresh-machine-in-order has the detail)
   1. gh auth login && gh auth setup-git && ~/.dotfiles/install-tools.sh
      The second run clones the private ~/.agents and installs the skills; nothing else is by hand.
+     SSH instead of the helper: README.md#github-over-ssh
 Then check the machine:  ./doctor.sh
 EOF
 fi
