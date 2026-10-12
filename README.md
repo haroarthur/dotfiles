@@ -256,6 +256,16 @@ part a package cannot bring - `herdr.service`, `herdr-panes.slice` and the pane 
 `config.toml` is a **seed**, not a link: copied once when absent, because Herdr keeps its sockets,
 logs and sessions beside it and those must not land in the git tree.
 
+### Mac apps
+
+Two casks on the Mac are apps, not tools, and each needs a person after the rebuild:
+
+- **OpenSuperWhisper** is local Whisper dictation. Grant it the microphone and accessibility
+  permissions by hand in System Settings after the rebuild; nothing grants them for you.
+- **Automic Vault** hardens the credentials command-line tools read. Installing it hardens nothing.
+  Start with the read-only `av scan`, then harden tools one at a time, `gh` and `gcloud` last,
+  because unattended jobs use them.
+
 ### Skills and Firstmate
 
 Skills do not live here. They live in **[haroarthur/agents](https://github.com/haroarthur/agents)**,
