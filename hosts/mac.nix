@@ -41,4 +41,10 @@
   # nixpkgs wraps gh, so a bare `gh auth setup-git` records the hidden store path of `.gh-wrapped`,
   # which a gh bump and the next garbage collection delete. This makes it record plain `gh`.
   home.sessionVariables.GH_PATH = "gh";
+
+  # `man home-configuration.nix` is built from an options.json that names nixpkgs'
+  # meta-maintainers.nix by a bare store path, which Nix warns about on every rebuild. Drop this
+  # once https://github.com/nix-community/home-manager/pull/9912 lands; the options are on Home
+  # Manager's website meanwhile.
+  manual.manpages.enable = false;
 }
