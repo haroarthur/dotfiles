@@ -15,6 +15,44 @@
   nixpkgs.config.allowUnfree = true;
   nixpkgs.hostPlatform = "aarch64-darwin";
 
+  # Home Manager's docs leave the meta.maintainers declaration (nixpkgs' modules/generic/
+  # meta-maintainers.nix, imported through nixos/modules/misc/meta.nix) as a bare nixpkgs store path
+  # in the options.json behind `man home-configuration.nix`, which Nix warns about on every Mac
+  # evaluation. Drop this once https://github.com/nix-community/home-manager/pull/9912 lands.
+  nixpkgs.overlays = [
+    (final: prev: {
+      nixosOptionsDoc =
+        args:
+        prev.nixosOptionsDoc (
+          args
+          // {
+            transformOptions =
+              opt:
+              let
+                o = (args.transformOptions or lib.id) opt;
+                nixpkgsPath = toString prev.path;
+              in
+              o
+              // {
+                declarations = map (
+                  decl:
+                  if lib.isString decl && lib.hasPrefix nixpkgsPath decl then
+                    let
+                      sub = lib.removePrefix "/" (lib.removePrefix nixpkgsPath decl);
+                    in
+                    {
+                      name = "<nixpkgs/${sub}>";
+                      url = "https://github.com/NixOS/nixpkgs/blob/master/${sub}";
+                    }
+                  else
+                    decl
+                ) o.declarations;
+              };
+          }
+        );
+    })
+  ];
+
   system.primaryUser = user;
   users.users.${user}.home = "/Users/${user}";
   system.stateVersion = 6;
