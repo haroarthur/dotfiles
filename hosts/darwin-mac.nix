@@ -41,19 +41,24 @@
     autoMigrate = true;
   };
 
-  # Homebrew is Mac-only: WezTerm and Claude as casks, Herdr as an upstream brew formula.
+  # Homebrew is Mac-only: the apps as casks, Herdr as an upstream brew formula.
   homebrew = {
     enable = true;
     # Leave onActivation.upgrade at its false default: rebuilds must not upgrade installed brews.
     onActivation.cleanup = "uninstall"; # zap would also delete a cask's config dirs; Claude config must survive claude-code leaving the cask list
     onActivation.autoUpdate = false; # pin bumps are attended; do not phone home on every switch
     onActivation.extraFlags = [ "--force" ];
+    # Listed so the bundle taps it and cleanup never untaps it. nix-homebrew leaves taps mutable, so
+    # Homebrew clones it like any `brew tap` and it needs no pinned flake input.
+    taps = [ "automic-vault/isotopes" ];
     brews = [ "herdr" ];
     casks = [
       "wezterm"
       "claude-code"
       # Chrome is an app bundle, never a PATH entry, and chrome-devtools-axi drives it.
       "google-chrome"
+      "opensuperwhisper"
+      "automic-vault/isotopes/automic-vault"
     ];
   };
 }
