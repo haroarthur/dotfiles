@@ -45,7 +45,7 @@
   homebrew = {
     enable = true;
     # Leave onActivation.upgrade at its false default: rebuilds must not upgrade installed brews.
-    onActivation.cleanup = "uninstall"; # zap would also delete a cask's config dirs; Claude config must survive claude-code leaving the cask list
+    onActivation.cleanup = "uninstall"; # zap would also delete a cask's config dirs; Claude config must survive a Claude cask leaving the list
     onActivation.autoUpdate = false; # pin bumps are attended; do not phone home on every switch
     onActivation.extraFlags = [ "--force" ];
     # Listed so the bundle taps it and cleanup never untaps it. nix-homebrew leaves taps mutable, so
@@ -54,7 +54,7 @@
     brews = [ "herdr" ];
     casks = [
       "wezterm"
-      "claude-code"
+      "claude-code@latest" # latest channel, not stable: new models reach /model as soon as Claude Code ships them
       # Chrome is an app bundle, never a PATH entry, and chrome-devtools-axi drives it.
       "google-chrome"
       "opensuperwhisper"

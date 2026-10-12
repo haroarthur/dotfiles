@@ -57,7 +57,7 @@ echo "==> Step 5: installer-managed tools"
 # useUserPackages puts home.packages (nodejs) in /etc/profiles/per-user/$USER/bin, which /etc/zshrc adds
 # but this non-login shell never sourced; put it on PATH so install-tools.sh finds npm. /opt/homebrew/bin
 # is missing for the same reason on a fresh Mac (GitHub's runners already have it): without it the
-# `command -v claude` check misses the Step 4 claude-code cask and installs a second, native Claude.
+# `command -v claude` check misses the Step 4 claude-code@latest cask and installs a second, native Claude.
 export PATH="/etc/profiles/per-user/$REAL_USER/bin:/opt/homebrew/bin:$PATH"
 install_tools_status=0
 "$DIR/install-tools.sh" || install_tools_status=$?
