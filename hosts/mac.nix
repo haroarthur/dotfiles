@@ -2,18 +2,62 @@
   pkgs,
   lib,
   user,
+  modulesPath,
+  osConfig,
   ...
-}:
+}@args:
 
 # Owns the Mac's Home Manager user: the shared shell and host packages.
 
+let
+  rev = osConfig.system.nixpkgsRevision;
+  nixosOptionsDoc =
+    docArgs:
+    pkgs.buildPackages.nixosOptionsDoc (
+      docArgs
+      // {
+        transformOptions =
+          opt:
+          let
+            transformed = docArgs.transformOptions opt;
+          in
+          transformed
+          // {
+            declarations = map (
+              decl:
+              if lib.isString decl then
+                let
+                  file = lib.removePrefix "./" (lib.path.removePrefix pkgs.path (/. + decl));
+                in
+                {
+                  name = "<nixpkgs/${file}>";
+                  url = "https://github.com/NixOS/nixpkgs/blob/${rev}/${file}";
+                }
+              else
+                decl
+            ) transformed.declarations;
+          };
+      }
+    );
+in
 {
   imports = [
     ./common.nix
     ../pkgs
     # Never ../pkgs/shell-wsl.nix: bash as a login shell and the OSC 7 hook are the WSL host's alone.
     ../pkgs/shell.nix
+    (import "${modulesPath}/manual.nix" (
+      args
+      // {
+        pkgs = pkgs // {
+          buildPackages = pkgs.buildPackages // {
+            inherit nixosOptionsDoc;
+          };
+        };
+      }
+    ))
   ];
+  disabledModules = [ "${modulesPath}/manual.nix" ];
 
   home.username = lib.mkDefault user;
   home.homeDirectory = lib.mkDefault "/Users/${user}";
