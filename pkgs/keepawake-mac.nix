@@ -5,9 +5,10 @@
 
 let
   # The busy signal is the one durable record Firstmate itself keeps per task, state/<id>.busy-state
-  # (bin/fm-busy-lib.sh), read in every home under the fleet root - the main home and each secondmate
-  # home. Reading it wakes and modifies nothing. A record busy for longer than `max` is treated as
-  # stale, so a crashed harness can never hold the Mac awake forever.
+  # (bin/fm-busy-lib.sh), read in the main home (~/firstmate) and in every home under the fleet root
+  # ~/.treehouse, the secondmate homes among them. Reading it wakes and modifies nothing. A record
+  # busy for longer than `max` is treated as stale, so a crashed harness can never hold the Mac awake
+  # forever.
   watcher = pkgs.writeShellScript "firstmate-keepawake" ''
     shopt -s nullglob
     max=21600
@@ -16,7 +17,7 @@ let
     busy() {
       local f line ts now
       printf -v now '%(%s)T' -1
-      for f in "$HOME"/.treehouse/firstmate-*/*/firstmate/state/*.busy-state; do
+      for f in "$HOME"/firstmate/state/*.busy-state "$HOME"/.treehouse/firstmate-*/*/firstmate/state/*.busy-state; do
         read -r line < "$f" || continue
         [[ $line == *" state=busy "* ]] || continue
         ts=''${line##*ts=}
