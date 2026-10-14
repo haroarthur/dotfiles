@@ -32,6 +32,14 @@
     trackpad.Clicking = true;
   };
 
+  # On AC power the Mac never idle-sleeps, so whatever is running keeps running once the display
+  # turns off; the display still sleeps, closing the lid still sleeps, and battery keeps its own
+  # timers. Not `power.sleep.computer`: it calls `systemsetup -setComputerSleep`, which has no AC/battery
+  # split and discards its own errors.
+  system.activationScripts.power.text = lib.mkAfter ''
+    pmset -c sleep 0
+  '';
+
   nix-homebrew = {
     enable = true;
     inherit user;
