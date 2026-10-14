@@ -5,7 +5,7 @@
   ...
 }:
 
-# Owns the Mac's Home Manager user: the shared shell and host packages.
+# Owns the Mac's Home Manager user: the shared shell, host packages and the keep-awake agent.
 
 {
   imports = [
@@ -13,6 +13,7 @@
     ../pkgs
     # Never ../pkgs/shell-wsl.nix: bash as a login shell and the OSC 7 hook are the WSL host's alone.
     ../pkgs/shell.nix
+    ../pkgs/keepawake-mac.nix
   ];
 
   home.username = lib.mkDefault user;
