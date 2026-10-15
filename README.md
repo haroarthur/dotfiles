@@ -270,12 +270,12 @@ Three casks on the Mac are apps, not tools, and each needs a person after the re
 
 ### Reaching the Mac from a phone
 
-(a) After the rebuild, sign in to Tailscale on the Mac, approving the network extension if asked.
-(b) Turn on Remote Login in System Settings, limited to your own user.
-(c) Install Tailscale on the Android phone and sign in with the same account.
-(d) In Termius add a host: the Mac's Tailscale name, user haro, port 22.
-(e) Connect and run herdr.
-(f) For a Lavish board, add a Local port forward, phone 4387 to 127.0.0.1:4387, then open the board link in the phone browser.
+1. After the rebuild, sign in to Tailscale on the Mac, approving the network extension if asked.
+2. Turn on Remote Login in System Settings, limited to your own user.
+3. Install Tailscale on the Android phone and sign in with the same account.
+4. In Termius add a host: the Mac's Tailscale name, user haro, port 22.
+5. Connect and run herdr.
+6. For a Lavish board, add a Local port forward, phone 4387 to 127.0.0.1:4387, then open the board link in the phone browser.
 
 ### Skills and Firstmate
 
