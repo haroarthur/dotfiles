@@ -1,18 +1,13 @@
-# Owns the doctor's tool checks and install-tools.sh's npm inputs. install-tools.sh installs every
-# row that names an npm package; doctor.sh checks every asserted row. Nix packages stay in the host
-# compositions and require a rebuild; a row here asks the doctor to check the resulting tool.
-#
-# A tool with its own installer keeps its step in install-tools.sh - a step is a paragraph of
-# reasons, not a name - and names itself here only so the doctor knows to check it.
+# Owns the doctor's tool checks and install-tools.sh's npm inputs. A tool with its own installer or a
+# Nix package keeps '-' for npm and is listed only so the doctor checks it.
 #
 # Four whitespace-separated columns, '-' where a column does not apply:
 #   tool     the executable's name, which is what the doctor looks for
-#   npm      the npm package that provides it; '-' for its own installer, or for Nix's packing
-#   check    run  = execute `<tool> --version`, because a stale shim of the right name resolves
-#                  under `command -v` and then fails to exec
+#   npm      the npm package that provides it
+#   check    run  = execute `<tool> --version`: a stale shim passes `command -v`, then fails to exec
 #            path = `command -v` is enough
 #            -    = installed but not asserted
-#   pane     pane = a live Herdr pane's environment must resolve it, else an agent cannot call it
+#   pane     pane = a live Herdr pane's environment must resolve it
 #
 # tool                npm                                check  pane
 claude                -                                  run    pane

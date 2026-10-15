@@ -4,8 +4,7 @@ A bootstrap for two machines: a Windows notebook running WSL Ubuntu, and a Mac. 
 `~/.dotfiles` brings either one up from nothing - Nix, Home Manager, the shell, the terminal, the
 editor, the agent tooling - and stays the place they are changed from afterwards.
 
-It is one flake, two host compositions and a handful of hand-run scripts. Nothing runs on a timer
-and nothing converges behind your back.
+It is one flake, two host compositions and a handful of hand-run scripts. Nothing runs on a timer.
 
 ## What is in it
 
@@ -23,15 +22,11 @@ and nothing converges behind your back.
 
 The rule the packing follows: **use official installers for tools that ship them and host packages
 for plain packages. Keep custom Nix integration only where there is a concrete blocker, named in
-the file that keeps it.** Nothing is
-hand-pinned any more; what Nix still owns for Herdr is its service and pane isolation, not its
-binary.
+the file that keeps it.**
 
 ## Start here
 
-The login comes first, because the account you log in with is the same one the private skills
-checkout needs afterwards, and `gh` is the clean way to clone. One login, at the top, and nothing
-below it is typed by hand.
+Log in first: the same account clones the private skills checkout later.
 
 ```sh
 # 1. Determinate Nix - the same installer bootstrap.sh runs, and where a naked box gets `gh`
@@ -47,17 +42,9 @@ nix-shell -p gh --run 'gh repo clone haroarthur/dotfiles ~/.dotfiles'
 ~/.dotfiles/doctor.sh        # read it to zero FAIL
 ```
 
-There is no second command to remember afterwards. Step 3 ends in
-[`install-tools.sh`](install-tools.sh), and because the login already exists by then, that first pass
-is also the one that clones the private `~/.agents` and installs the skills. On Ubuntu or WSL,
-`sudo apt-get install -y gh` is a shorter step 1 if you prefer; Nix arrives with `bootstrap.sh`
-either way.
-
-Piping the bootstrap off the web also works now that this repository is public - `curl -fsSL
-.../bootstrap.sh | bash` notices it has no clone beside it and fetches one, asking for the login the
-private skills still need as it goes - but the login-first order above is the tidier one. This public
-repository is a **fresh root**: it carries the finished shape without the working history, which
-stays private.
+Step 3 ends in [`install-tools.sh`](install-tools.sh), which, with the login already in place, also
+clones the private `~/.agents` and installs the skills. `curl -fsSL .../bootstrap.sh | bash` works
+too: with no clone beside it, it fetches one and asks for the login as it goes.
 
 ### The Windows side
 
@@ -67,74 +54,46 @@ One thing must happen before Ubuntu exists, and it is the only step that needs a
 wsl --install -d Ubuntu-24.04
 ```
 
-Reboot, launch Ubuntu, create your account - any name works; step 3 above compares
-[flake.nix](flake.nix)'s one `user = "haro";` line against `whoami` and offers to rewrite it - and run
-**Start here** inside it. Everything else on the Windows side then runs out of the clone. From an
-admin PowerShell, two lines:
+Reboot, launch Ubuntu, create your account - any name works; step 3 above offers to rewrite
+[flake.nix](flake.nix)'s `user = "haro";` line to match - and run **Start here** inside it. Then, from
+an admin PowerShell, run the rest out of the clone:
 
 ```powershell
 Set-ExecutionPolicy -Scope Process Bypass -Force
 & (wsl.exe -d Ubuntu-24.04 -e sh -c 'wslpath -w "$HOME/.dotfiles/windows.ps1"')
 ```
 
-**The first line is the snag, not a precaution.** A script in the clone is a file on the WSL network
-share, and PowerShell refuses to load one under any policy stricter than `Bypass`: under the
-`RemoteSigned` this notebook carries, `\\wsl.localhost\<distro>\home\<user>\.dotfiles\windows.ps1`
-comes back refused as not digitally signed (`FullyQualifiedErrorId : UnauthorizedAccess`). `-Scope
-Process` lasts for that one window, changes nothing on the machine and needs no administrator of its
-own. The second line is the trick `.wezterm.lua` already uses: `wsl.exe` resolves the path inside
-the explicitly selected Ubuntu 24.04 distro, so the account name is never typed and another default
-distro cannot redirect the setup.
+The first line is required: a script on the WSL share is refused under `RemoteSigned`, and
+`-Scope Process` changes nothing beyond that window. `wsl.exe` resolves the path inside the named
+distro, so the account name is never typed. Where Group Policy sets an execution policy
+(`Get-ExecutionPolicy -List`), copy `windows.ps1` to a local disk and run it there. Not run here: an
+elevated session and `wsl --install` itself.
 
-**What was proven here, and what was not.** The refusal, the `-Scope Process Bypass` that clears it,
-the `wsl.exe`-resolved path, and [`windows.ps1`](windows.ps1) parsing over that path were all
-executed on this notebook, from a PowerShell reached out of WSL. What was **not** executed: this host
-has no Windows administrator access, so neither an elevated session nor `wsl --install` itself was
-run - the form above is proven for everything except the elevation, which `-Scope Process` does not
-need anyway. Two edges it does not cover. Where Group Policy sets an execution policy -
-`Get-ExecutionPolicy -List` shows `MachinePolicy` or `UserPolicy` as anything but `Undefined` -
-`-Scope Process` is refused and nothing in-session helps: copy `windows.ps1` to a local disk path and
-run it there. And a one-shot equivalent, proven the same way, is
-`powershell -NoProfile -ExecutionPolicy Bypass -File \\wsl.localhost\<distro>\home\<user>\.dotfiles\windows.ps1`,
-which works but types both names.
-
-That run does five things - `wsl --install` again, which sees the distro already there and says so,
-WezTerm by `winget`, the Hack Nerd Font, `%USERPROFILE%\.wslconfig`, and the small
-`%USERPROFILE%\.wezterm.lua` that loads the real config out of the clone. There is no Linux WezTerm:
-the Windows app is the terminal and talks to the WSL domain, which is why its config is a Windows file.
+It installs WezTerm by `winget` and the Hack Nerd Font, and writes `%USERPROFILE%\.wslconfig` and the
+small `%USERPROFILE%\.wezterm.lua` that loads the real config out of the clone.
 
 ### A fresh machine, in order
 
-The **scripts** still come up in two phases, and that split is load-bearing even though a person at a
-keyboard logs in before either of them: phase 1 is the machine and needs no login, phase 2 is the
-account and starts at `gh auth login`. Phase 1 uses public inputs only, which is what lets CI run
-these same scripts with no credential at all
-([bootstrap-check.yml](.github/workflows/bootstrap-check.yml)). Logging in first does not change that
-contract - it only means phase 2's work happens inside phase 1's last step.
+Phase 1 is the machine and needs no login, which is what lets CI run these scripts
+([bootstrap-check.yml](.github/workflows/bootstrap-check.yml)); phase 2 is the account and starts at
+`gh auth login`. Logging in first only means phase 2 happens inside phase 1's last step.
 
 1. **Windows only:** `wsl --install -d Ubuntu-24.04` in an admin PowerShell, then reboot and create your
-   Ubuntu account. Skip this on a Mac.
+   Ubuntu account.
 2. **The login and the clone** - steps 1 and 2 of **Start here**.
-3. **[`bootstrap.sh`](bootstrap.sh)** (or `bootstrap-mac.sh`) from `~/.dotfiles`. It installs Nix,
-   settles the account name against `whoami`, builds the `wsl-ubuntu-safe` guard, links the clone to
-   `~/.dotfiles`, runs the first switch, and finishes in [`install-tools.sh`](install-tools.sh).
-4. Everything else comes with that last step: Herdr, no-mistakes, the Google Cloud SDK, the Grok CLI,
-   Claude Code's compact-adviser plugin ([below](#compact-adviser)), the Chrome `.deb` that
-   `chrome-devtools-axi` drives, and - the login being already in place - the
-   private `~/.agents` checkout and its skills. `~/.claude/skills` already links to `~/.agents/skills`.
-   The Chrome step runs `sudo apt-get`, so it asks for your password as it goes; the Mac takes brews
-   and casks instead. The Mac asks for its login password earlier, for the Nix installer and again for
-   each `darwin-rebuild switch`. It needs no Xcode Command Line Tools: its `git` and `python3` come
-   from Nix.
+3. **[`bootstrap.sh`](bootstrap.sh)** (or `bootstrap-mac.sh`): Nix, the account name, the
+   `wsl-ubuntu-safe` guard, the first switch, then [`install-tools.sh`](install-tools.sh).
+4. That last step brings Herdr, no-mistakes, the Google Cloud SDK, the Grok CLI, the
+   [compact-adviser](#compact-adviser) plugin, Chrome and the private `~/.agents` skills. On WSL the
+   Chrome `.deb` asks for your password; the Mac asks for it for the Nix installer and each
+   `darwin-rebuild switch`, and needs no Xcode Command Line Tools.
 5. **Windows only:** the two admin-PowerShell lines above, out of the clone.
 6. `./doctor.sh`, and read it to zero FAIL.
 
 ### GitHub over SSH
 
-The `gh` credential helper that `gh auth setup-git` writes is the default and what the scripts set up.
-SSH is a second supported route: [`doctor.sh`](doctor.sh) passes the "git helper" line on either one.
-These steps are the ones that work on a Mac; on Linux or WSL, leave out the `UseKeychain` line and
-the `--apple-use-keychain` flag.
+The `gh` credential helper is the default; SSH also works, and [`doctor.sh`](doctor.sh) passes either.
+These steps are for a Mac; on Linux or WSL, leave out `UseKeychain` and `--apple-use-keychain`.
 
 1. Make a key with a passphrase: `ssh-keygen -t ed25519 -f ~/.ssh/id_ed25519`.
 2. On macOS, put the passphrase in the Keychain: `/usr/bin/ssh-add --apple-use-keychain ~/.ssh/id_ed25519`.
@@ -166,102 +125,54 @@ the `--apple-use-keychain` flag.
 nix flake check      # prove a change without switching to it
 ```
 
-**[`doctor.sh`](doctor.sh)** checks the end state rather than who provided it, one check per line, and
-takes the tools it asks about from [`tools.list`](tools.list) - a `run` row is executed rather than
-resolved, because a stale shim of the right name passes `command -v` and then fails to exec.
-It never opens the Herdr socket - the running server is read from `/proc/<MainPID>` - so it is safe
-with a live fleet under it. Exit 0 means no phase-1 FAIL: what a login owns is counted apart as
-`phase 2` and what this OS cannot have as `skip`, so neither reds a healthy box. It is advisory and
-deliberately gates nothing.
+**[`doctor.sh`](doctor.sh)** checks the end state, one line per check, with its tool list from
+[`tools.list`](tools.list). It never opens the Herdr socket, so it is safe under a live fleet. Exit 0
+means no phase-1 FAIL; `phase 2` and `skip` lines are not failures. It gates nothing.
 
-**[`install-tools.sh`](install-tools.sh)** runs every installer the packing does not carry.
-[`tools.list`](tools.list) supplies its npm packages and the checks `doctor.sh` runs, including
-checks for host packages. Nix packages are declared in the host compositions and require a rebuild;
-installer-managed tools are repaired by re-running this script. A tool with its own installer keeps
-a step here too, because a step is a paragraph of reasons rather than a name. The one thing this
-script will not do is `gh auth login`. Every step is
-idempotent, so re-running it is how a machine is repaired, and a failure names which step to retry
-instead of hiding the others.
+**[`install-tools.sh`](install-tools.sh)** runs every installer the packing does not carry. Every step
+is idempotent, so re-running it is the repair, and a failure names the step to retry.
 
-**`rebuild.sh`** is how this host changes. In front of `home-manager switch` stands one guard, about
-content rather than authorization: it and `bootstrap.sh` build `checks.x86_64-linux.wsl-ubuntu-safe`
-([flake.nix](flake.nix)), which asserts the built generation has `herdr`, `zsh`, `herdr-pane-shell`,
-`herdr.service` and `herdr-panes.slice`. A green build cannot tell a full profile from one without
-Herdr, and activating that one stops every agent pane. No flag or variable overrides it; a hand-run
-`home-manager switch` goes around it, at your own risk.
+**`rebuild.sh`** builds the `wsl-ubuntu-safe` guard ([flake.nix](flake.nix)) before
+`home-manager switch`: a profile without Herdr's units or the pane shell would stop every agent
+pane. Nothing overrides it; a hand-run `home-manager switch` goes around it.
 
-**`nix flake check`** builds the WSL generation, runs that guard, and evaluates the Mac on Linux, so
-a broken `hosts/mac.nix` goes red here rather than on the Mac's first day. CI runs it on every pull
-request and push to `main`. The full bootstrap on clean macOS and Linux runners
-([bootstrap-check.yml](.github/workflows/bootstrap-check.yml)) is opt-in: it runs only when a pull
-request changes `bootstrap*.sh`, `install-tools.sh`, `windows.ps1`, or the `tools.list` input, or when
-it carries the `bootstrap` label. It is never a required check. Run `nix fmt` before committing, and
-`git add` new files - Nix cannot see them otherwise.
+**`nix flake check`** builds the WSL generation, runs that guard and evaluates the Mac; CI runs it on
+every pull request and push to `main`. The full bootstrap on clean runners
+([bootstrap-check.yml](.github/workflows/bootstrap-check.yml)) is opt-in. Run `nix fmt` before
+committing, and `git add` new files - Nix cannot see them otherwise.
 
 ### Agent attribution
 
-Where a harness exposes local attribution settings, attribution is switched off there rather than
-cleaned from commits or pull requests later. On either host, activation recursively merges the
-tracked policy into the live writable JSON and keeps every unrelated preference the harness has
-written:
+Attribution is switched off in each harness's local settings, which activation merges into the live
+writable JSON without touching other preferences:
 
-- **Claude Code:** `attribution.commit` and `attribution.pr` are empty strings in
-  [`home/.claude/settings.json`](home/.claude/settings.json). Claude's
-  [settings reference](https://code.claude.com/docs/en/settings-reference#attribution) documents
-  that empty values hide its commit trailer and PR line.
-- **Cursor Agent CLI:** both attribution booleans are false in
-  [`home/.cursor/cli-config.json`](home/.cursor/cli-config.json). Cursor's
-  [CLI configuration reference](https://cursor.com/docs/cli/reference/configuration#schema) names
-  `attribution.attributeCommitsToAgent` and `attribution.attributePRsToAgent`, including their
-  default of true.
+- **Claude Code:** `attribution.commit` and `attribution.pr` are empty in
+  [`home/.claude/settings.json`](home/.claude/settings.json).
+- **Cursor Agent CLI:** both `attribution` booleans are false in
+  [`home/.cursor/cli-config.json`](home/.cursor/cli-config.json).
 
-The other configured harnesses expose no local commit or PR attribution switch to deploy:
-
-- **Codex:** attribution is a remote user policy fetched from the Codex backend, not a
-  `config.toml` key. The current
-  [policy source](https://github.com/openai/codex/blob/main/codex-rs/ext/git-attribution/src/policy.rs)
-  reads `commit_attribution_enabled` from that service, while the complete
-  [local configuration reference](https://developers.openai.com/codex/config-reference) has no
-  corresponding key.
-- **Pi:** its complete [settings reference](https://github.com/earendil-works/pi/blob/main/packages/coding-agent/docs/settings.md)
-  has no git attribution setting. Pi gives the model a general shell tool rather than a separate
-  commit or pull-request publisher.
-- **Grok:** its complete [settings reference](https://docs.x.ai/build/settings/reference) has no git
-  attribution setting.
-- **OpenCode:** this repository prepares its global rulebook link even when OpenCode is absent, but
-  OpenCode's complete [configuration reference](https://opencode.ai/docs/config/) has no git
-  attribution setting.
-
-No wrapper is added for a harness that has no such setting. For every harness, the global rulebook
-still says:
-
-> When writing commit messages or PR descriptions, NEVER auto-add your agent name as co-author or an agent attribution footer such as "Generated with ..."
+Codex, Pi, Grok and OpenCode have no local attribution setting; for them the rulebook line in
+[home/AGENTS.md](home/AGENTS.md) is the only guard.
 
 ### The shell, WezTerm and Herdr
 
-Both hosts come up in the same shell, and [pkgs/shell.nix](pkgs/shell.nix) is all of it: zsh,
-starship, seven aliases, six commands and `EDITOR=nvim`. `cc` is
-`claude --dangerously-skip-permissions`, which is how an agent pane starts.
-[pkgs/shell-wsl.nix](pkgs/shell-wsl.nix) is the WSL host's alone: **bash** as the login shell, and
-the **OSC 7 working-directory hook**, without which every new pane opens in `/mnt/c/Users/<user>`.
+Both hosts share [pkgs/shell.nix](pkgs/shell.nix): zsh, starship, the aliases and `EDITOR=nvim`. `cc`
+is `claude --dangerously-skip-permissions`, which is how an agent pane starts.
+[pkgs/shell-wsl.nix](pkgs/shell-wsl.nix) adds, on WSL only, **bash** as the login shell and the
+**OSC 7 hook**, without which every new pane opens in `/mnt/c/Users/<user>`.
 
 WezTerm is one file for both hosts, [home/.config/wezterm/wezterm.lua](home/.config/wezterm/wezterm.lua),
-with a Windows branch. There is no second Windows copy: `windows.ps1` writes a small
-`%USERPROFILE%\.wezterm.lua` that resolves this clone through `wsl.exe` and loads that file, falling
-back to a plain terminal while WSL is still coming up. It is also where the distro name comes from -
-it reads it off the resolved path and hands it to the branch, so the domain is never typed anywhere.
-Herdr comes from its own installer on WSL and from Homebrew on the Mac; what the packing owns is the
-part a package cannot bring - `herdr.service`, `herdr-panes.slice` and the pane shell
-([pkgs/herdr/module.nix](pkgs/herdr/module.nix)), with the unit execing `~/.local/bin/herdr`. Its
-`config.toml` is a **seed**, not a link: copied once when absent, because Herdr keeps its sockets,
-logs and sessions beside it and those must not land in the git tree.
+with a Windows branch that the `windows.ps1` stub loads through `wsl.exe`. Herdr comes from its own
+installer on WSL and from Homebrew on the Mac; [pkgs/herdr/module.nix](pkgs/herdr/module.nix) owns
+`herdr.service`, `herdr-panes.slice` and the pane shell. Its `config.toml` is a **seed**, copied once,
+because Herdr keeps sockets, logs and sessions beside it.
 
 ### Mac apps
 
 Three casks on the Mac are apps, not tools, and each needs a person after the rebuild:
 
 - **OpenSuperWhisper** is local Whisper dictation. Grant it the microphone and accessibility
-  permissions by hand in System Settings after the rebuild; nothing grants them for you.
+  permissions by hand in System Settings.
 - **Automic Vault** hardens the credentials command-line tools read. Installing it hardens nothing.
   Start with the read-only `av scan`, then harden tools one at a time, `gh` and `gcloud` last,
   because unattended jobs use them.
@@ -280,15 +191,13 @@ Three casks on the Mac are apps, not tools, and each needs a person after the re
 
 ### Skills and Firstmate
 
-Skills do not live here. They live in **[haroarthur/agents](https://github.com/haroarthur/agents)**,
-checked out at `~/.agents`: the personal ones tracked there, third-party ones re-added by its
-`./install.sh`. This repository declares one thing about that: on both machines `~/.claude/skills`
-is a symlink to `~/.agents/skills`, which Codex reads natively. The `no-mistakes` skill ships with
-its own installer.
+Skills live in **[haroarthur/agents](https://github.com/haroarthur/agents)**, checked out at
+`~/.agents`; this repository only links `~/.claude/skills` to `~/.agents/skills`, which Codex reads
+natively. The `no-mistakes` skill ships with its own installer.
 
-Firstmate is an agent distro ([kunchenguid/firstmate](https://github.com/kunchenguid/firstmate)),
-never an `npx skills` install, and its skills must never be vendored. Day one on a **new** machine
-is a fresh clone and one harness; `AGENTS.md` takes over from there. Never clone it over a live home.
+Firstmate ([kunchenguid/firstmate](https://github.com/kunchenguid/firstmate)) is a fresh clone and one
+harness on a **new** machine - never an `npx skills` install, never vendored, never cloned over a
+live home.
 
 ```sh
 git clone https://github.com/kunchenguid/firstmate && cd firstmate
@@ -297,11 +206,10 @@ claude          # or: grok --trust   or: pi   or: FM_PI_HARNESS=pi-signed pi-sig
 
 ### Records for a fresh Firstmate home
 
-A Firstmate home keeps its durable memory in `data/` - the backlog, the captain's standing notes,
-each live task's brief and report - and the distro gitignores that directory and ships nothing in it.
-It lives instead in the private **haroarthur/fleet-records**, one branch per home: `home/main` for
-the primary, `home/analytics` and `home/agent-env` for the second mates. Restoring a home is one
-clone of its branch into the `data/` that home does not have yet:
+A home's `data/` (backlog, standing notes, task briefs and reports) is gitignored by the distro and
+lives in the private **haroarthur/fleet-records**, one branch per home: `home/main` for the primary,
+`home/analytics` and `home/agent-env` for the second mates. Restore it before the home's first
+launch, into a `data/` that does not exist yet:
 
 ```sh
 git clone --branch home/main --single-branch \
@@ -309,20 +217,10 @@ git clone --branch home/main --single-branch \
 git -C ~/firstmate/data remote -v && git -C ~/firstmate/data branch --show-current
 ```
 
-**The refusal is the point, and it is git's own.** A clone into a path that already holds anything
-stops with `destination path already exists and is not an empty directory`, so this cannot write over
-a home that already has records - there is no flag here to reach for and none should be added. Do it
-before that home's first launch, while `data/` does not exist yet. If it does exist and is not empty,
-that home has records: move them aside and merge by hand.
-
-What comes back is memory, not evidence. The branch carries its own `.gitignore`, which tracks the
-root markdown, `config/`, and each live task's `brief.md` and `report.md` - nothing else. The cold
-archive stays on disk and in `~/fleet-archive`, and is never in the branch to restore.
-
-**A second mate is the same shape with its own root and branch** - `git clone --branch
-home/analytics ... <that home>/data` - and that is reasoned, not tested. This notebook runs one live
-home, `~/firstmate` on `home/main`, which is what the recipe above was checked against; both
-second-mate homes are archived under `~/fleet-archive`, so nothing here proved their path end to end.
+Git refuses to clone into a non-empty path, so this cannot overwrite a home's records; add no flag
+around it. If `data/` already has records, move them aside and merge by hand. The branch carries
+memory only - root markdown, `config/`, and each live task's brief and report. A second mate uses
+its own branch the same way (untested).
 
 ### compact-adviser
 
@@ -330,37 +228,27 @@ second-mate homes are archived under `~/fleet-archive`, so nothing here proved t
 when it is safe to `/compact`.
 
 - **Claude Code:** `install-tools.sh` installs the plugin. It loads only while
-  `CLAUDE_CODE_ENABLE_FUNCTION_HOOKS=1`, which [hosts/common.nix](hosts/common.nix) exports to every
-  login shell - the same switch turns on Firstmate's Calm mod.
-- **Pi:** `npm:compact-adviser@0.1.6` is in the `settings.json` seed, pinned like the packages
-  beside it, and Pi installs a listed package when it starts. The seed is day-one content, never
-  re-applied to a live host, so a host whose settings predate it runs
-  `pi install npm:compact-adviser@0.1.6` once.
+  `CLAUDE_CODE_ENABLE_FUNCTION_HOOKS=1`, which [hosts/common.nix](hosts/common.nix) exports.
+- **Pi:** `npm:compact-adviser@0.1.6` is in the `settings.json` seed. A host whose settings predate
+  it runs `pi install npm:compact-adviser@0.1.6` once.
 
-**The key** is a TypeSafe API key - a secret, so never in this repository. Once per machine, either
-put `TYPESAFE_API_KEY=...` in a private `~/.secrets.env` outside any clone, which every login shell
-on both hosts exports ([hosts/common.nix](hosts/common.nix)), or save it once per harness through
-`/compact-adviser` in Pi and in Claude Code (once the mod has loaded).
+**The key** is a TypeSafe API key, never in this repository: put `TYPESAFE_API_KEY=...` in a private
+`~/.secrets.env` outside any clone, which every login shell exports, or save it through
+`/compact-adviser` in each harness.
 
 ## Make it yours
 
-1. **The account name.** [flake.nix](flake.nix) names it once, in `user = "haro";`. The bootstrap
-   scripts offer to rewrite that line when it does not match `whoami`.
-2. **The rulebook.** `home/AGENTS.md` is the one global rulebook; both machines link it into
-   Claude, Codex, OpenCode, Grok and Pi. Write your own; the links do not care what is in it.
-3. **Your own configs.** WezTerm and nvim are out-of-store pointers into `home/`, so an edit in the
-   clone is live with no rebuild. Pi's `settings.json` is a **seed** copied once when absent. Claude
-   and Cursor also keep writable live settings, but each activation merges the attribution policy
-   from `home/` into them without replacing program-owned preferences. This is why harness rewrites
-   do not dirty the clone while attribution cannot regress after a rebuild.
+1. **The account name.** [flake.nix](flake.nix) names it once, in `user = "haro";`; the bootstrap
+   scripts offer to rewrite it.
+2. **The rulebook.** `home/AGENTS.md` is linked into Claude, Codex, OpenCode, Grok and Pi. Write your
+   own.
+3. **Your own configs.** WezTerm and nvim link into `home/`, so an edit is live with no rebuild. Pi's
+   `settings.json` is a seed; Claude's and Cursor's get only their attribution policy re-merged.
 4. **Packages and tools.** Base packages are plain names in `hosts/wsl-ubuntu.nix` or
-   `hosts/mac.nix`. Everything an installer brings is one line in [tools.list](tools.list), which
-   `install-tools.sh` and `doctor.sh` both read, so adding or swapping a tool is that line and a
-   re-run of the two - never a rebuild.
-5. **Secrets.** None are here: passwords and API keys go in a `.env` in the home that needs one, and a
-   key every shell should carry - `TYPESAFE_API_KEY` for [compact-adviser](#compact-adviser) - in a
-   private `~/.secrets.env` outside any clone, which every login shell exports.
+   `hosts/mac.nix`. An installer-brought tool is one line in [tools.list](tools.list) and a re-run of
+   `install-tools.sh` - never a rebuild.
+5. **Secrets.** None are here: a `.env` in the home that needs one, or `~/.secrets.env` for a key
+   every shell should carry.
 
-The host-specific choices to look at first are the Herdr memory ceilings in
-[pkgs/herdr/module.nix](pkgs/herdr/module.nix), sized for this box's RAM, and the `.wslconfig` in
-[windows.ps1](windows.ps1), which sizes the VM they sit inside.
+Host-specific sizes to check first: the Herdr memory ceilings in
+[pkgs/herdr/module.nix](pkgs/herdr/module.nix) and the `.wslconfig` in [windows.ps1](windows.ps1).

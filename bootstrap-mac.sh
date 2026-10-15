@@ -38,7 +38,7 @@ REAL_USER="$(whoami)"
 FLAKE_USER="$(sed -nE 's/^[[:space:]]*user = "([^"]+)";.*/\1/p' "$DIR/flake.nix" | head -n1)"
 [ -n "$FLAKE_USER" ] || { echo "    Could not find the single \"user = \" line in flake.nix." >&2; exit 1; }
 if [ "$FLAKE_USER" != "$REAL_USER" ]; then
-  REPLY=y # with no terminal to ask at (a CI runner) rewriting is the only answer that lets the run continue
+  REPLY=y # no terminal to ask at (CI): rewrite
   [ ! -t 0 ] || read -r -p "    flake.nix is for \"$FLAKE_USER\" but you are \"$REAL_USER\". Rewrite its user line? [y/N] " REPLY
   case "$REPLY" in y | Y) ;; *) echo "    Declined: edit flake.nix's user line yourself, then run this again." >&2; exit 1 ;; esac
   sed -i '' -E "s/^([[:space:]]*user = \")[^\"]+(\";.*)/\1${REAL_USER}\2/" "$DIR/flake.nix"
@@ -52,12 +52,9 @@ sudo "$(command -v nix)" run --no-update-lock-file --inputs-from "$HOME/.dotfile
   switch --flake "$HOME/.dotfiles#mac"
 
 echo "==> Step 5: installer-managed tools"
-# The same installer set as WSL; the cask-backed steps see their tool present and skip. Prints phase 2.
-# Optional installer failures stay advisory, but a missing or incomplete npm toolchain must fail CI.
-# useUserPackages puts home.packages (nodejs) in /etc/profiles/per-user/$USER/bin, which /etc/zshrc adds
-# but this non-login shell never sourced; put it on PATH so install-tools.sh finds npm. /opt/homebrew/bin
-# is missing for the same reason on a fresh Mac (GitHub's runners already have it): without it the
-# `command -v claude` check misses the Step 4 claude-code cask and installs a second, native Claude.
+# Optional installer failures stay advisory; a broken npm toolchain (exit 2) must fail CI.
+# This non-login shell lacks /etc/profiles/per-user/$USER/bin (nodejs) and, on a fresh Mac,
+# /opt/homebrew/bin - without which `command -v claude` misses the cask and installs a second Claude.
 export PATH="/etc/profiles/per-user/$REAL_USER/bin:/opt/homebrew/bin:$PATH"
 install_tools_status=0
 "$DIR/install-tools.sh" || install_tools_status=$?

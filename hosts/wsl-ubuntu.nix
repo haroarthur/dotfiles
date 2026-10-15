@@ -8,9 +8,8 @@
 # Owns the WSL Ubuntu host: its packing and its package list.
 
 let
-  # nixpkgs wraps gh as a hidden `.gh-wrapped` binary that lives in Home Manager's inner home-path
-  # but not in `~/.nix-profile`, and gh records its own /proc path as the git credential helper, so
-  # without GH_PATH `gh auth setup-git` writes a helper path the profile cannot run.
+  # nixpkgs' gh is a hidden `.gh-wrapped` outside ~/.nix-profile, and `gh auth setup-git` records its
+  # own /proc path as the helper; GH_PATH makes it record one the profile can run.
   gh = pkgs.writeShellApplication {
     name = "gh";
     text = ''
@@ -23,8 +22,7 @@ in
   imports = [
     ./common.nix
     ../pkgs
-    # The floor flake.nix's `wsl-ubuntu-safe` check guards: without systemd.nix the units are written
-    # but never loaded, without shell.nix there is no zsh, without herdr there is no herdr.service.
+    # The floor flake.nix's `wsl-ubuntu-safe` check guards.
     ../pkgs/no-mistakes.nix
     ../pkgs/systemd.nix
     ../pkgs/shell.nix
@@ -35,8 +33,6 @@ in
   # WSLg: the Herdr service needs DISPLAY and WAYLAND_DISPLAY to reach the Windows compositor.
   herdr.wslg.enable = true;
 
-  # Plain names from the locked `nixpkgs-linux`; a tool with an official installer belongs in
-  # install-tools.sh instead.
   home.packages = [
     gh
   ]

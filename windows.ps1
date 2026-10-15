@@ -1,22 +1,13 @@
-# Owns the Windows side of a fresh machine: WSL Ubuntu, WezTerm, the font WezTerm renders with, the
-# .wslconfig the VM is sized by, and the small %USERPROFILE%\.wezterm.lua that loads the real config
-# out of the WSL clone. It is safe to run again.
-#
-# Only `wsl --install` has to happen before Ubuntu exists; the documented order runs the rest of this
-# file out of the clone, which is a file on the WSL share and so needs the execution policy lifted for
-# that window - README.md#the-windows-side carries the exact two lines and what was proven of them.
-#
-# It is one self-contained file because it must still run with no clone beside it - piped off the web
-# is the shape of a box that has nothing yet - which is why the two files it writes are here as text
-# rather than read from the repository.
+# Owns the Windows side of a fresh machine: WSL Ubuntu, WezTerm, its font, .wslconfig and the
+# %USERPROFILE%\.wezterm.lua that loads the clone's config. Safe to run again. Self-contained on
+# purpose: it must run with no clone beside it, so the two files it writes are text here.
 
 $ErrorActionPreference = 'Stop'
 
 function Step($n) { Write-Host "`n==> $n" -ForegroundColor Cyan }
 function Note($m) { Write-Host "    $m" }
 
-# The one source for the distro name. Every WSL call targets it explicitly, and the generated
-# WezTerm stub receives the same value, so another default distro cannot redirect this setup.
+# The one source for the distro name: every WSL call and the WezTerm stub use it.
 $distro = 'Ubuntu-24.04'
 $utf8NoBom = New-Object System.Text.UTF8Encoding($false)
 
@@ -29,9 +20,8 @@ swap=4GB
 autoMemoryReclaim=gradual
 '@
 
-# WezTerm is a Windows program and reads nothing from the WSL home by itself, so this hands it the
-# real config out of the clone. The template receives the distro from `$distro`, while wsl.exe
-# resolves the account; until WSL answers, a plain terminal is enough to fix that.
+# WezTerm reads nothing from the WSL home, so this loads the clone's config; until WSL answers, a
+# plain terminal is enough to fix that.
 $wezTermStubTemplate = @'
 local wezterm = require("wezterm")
 
@@ -71,14 +61,12 @@ $targetInstalled = $installed -contains $distro
 if ($targetInstalled) {
   Note "already installed: $distro"
 } else {
-  # Needs an administrator. Without one, Windows says so itself and this stops here, which is right:
-  # there is no fleet without WSL.
+  # Needs an administrator; without one Windows says so and this stops.
   wsl.exe --install -d $distro
   Note 'installed - reboot before launching it for the first time'
 }
 
 Step 'WezTerm'
-# The terminal is the Windows app talking to the WSL domain; there is no Linux WezTerm to install.
 if (Get-Command wezterm.exe -ErrorAction SilentlyContinue) {
   Note 'already installed'
 } else {
@@ -116,8 +104,7 @@ Step 'Profile files'
 Note 'wrote .wslconfig and .wezterm.lua'
 
 Step 'Next'
-# Run out of the clone - the documented order, README.md#the-windows-side - the Ubuntu side is
-# already done and this only refreshed the Windows half. Run before it, it has to say where to go.
+# Run before the clone exists, it has to say where to go next.
 $cloned = $targetInstalled -and ((wsl.exe -d $distro -e sh -c 'test -d "$HOME/.dotfiles" && echo yes') -match 'yes')
 if ($cloned) {
   Note 'The clone is already there, so the Ubuntu side is done. Check it inside WSL: ~/.dotfiles/doctor.sh'
