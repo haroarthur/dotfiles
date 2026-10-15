@@ -258,13 +258,40 @@ logs and sessions beside it and those must not land in the git tree.
 
 ### Mac apps
 
-Two casks on the Mac are apps, not tools, and each needs a person after the rebuild:
+Three casks on the Mac are apps, not tools, and each needs a person after the rebuild:
 
 - **OpenSuperWhisper** is local Whisper dictation. Grant it the microphone and accessibility
   permissions by hand in System Settings after the rebuild; nothing grants them for you.
 - **Automic Vault** hardens the credentials command-line tools read. Installing it hardens nothing.
   Start with the read-only `av scan`, then harden tools one at a time, `gh` and `gcloud` last,
   because unattended jobs use them.
+- **Tailscale** (`tailscale-app`) reaches this Mac from a phone. Nothing signs in for you; see
+  [Reaching the Mac from a phone](#reaching-the-mac-from-a-phone).
+
+### Reaching the Mac from a phone
+
+The free Personal plan (checked against tailscale.com/pricing and /kb/1154 on 2026-10-15) allows 6
+users and unlimited user devices, so one person with a Mac and a phone fits. Tailscale SSH is on all
+plans, but a macOS machine can only be its server with the open-source `tailscaled`, not this app,
+so SSH into the Mac is plain SSH over the tailnet, through macOS Remote Login. The pricing page does
+not list `tailscale serve` separately; it says Personal reaches nearly all features. Nothing here
+uses Funnel.
+
+1. After the rebuild, open Tailscale on the Mac, approve the network extension in System Settings
+   if asked, and sign in. Only you can do this.
+2. On the phone (Android), install Tailscale from the Play Store and sign in with the same account.
+   Check that the Mac is listed and shows as connected.
+3. Install an SSH app such as Termius. Add a host: the Mac's Tailscale name, user `haro`, port 22.
+4. Connect and run `herdr` to reach the live sessions.
+
+Remote Login is enabled by hand in System Settings, not by this repository. Limit it to your own user
+(Allow access for: only these users) so no other account can log in.
+
+To view a Lavish board: while connected in Termius, add a Port Forwarding rule of type Local, phone
+port 4387 to `127.0.0.1:4387` on the Mac host, then open the board link (`http://127.0.0.1:4387/...`)
+in the phone browser. This needs no `tailscale serve`.
+
+Later, not set up: ACLs.
 
 ### Skills and Firstmate
 
