@@ -229,8 +229,8 @@ when it is safe to `/compact`.
 
 - **Claude Code:** `install-tools.sh` installs the plugin. It loads only while
   `CLAUDE_CODE_ENABLE_FUNCTION_HOOKS=1`, which [hosts/common.nix](hosts/common.nix) exports.
-- **Pi:** `npm:compact-adviser@0.1.6` is in the `settings.json` seed. A host whose settings predate
-  it runs `pi install npm:compact-adviser@0.1.6` once.
+- **Pi:** `npm:compact-adviser` is in the `settings.json` seed. A host whose settings predate
+  it runs `pi install npm:compact-adviser` once.
 
 **The key** is a TypeSafe API key, never in this repository: put `TYPESAFE_API_KEY=...` in a private
 `~/.secrets.env` outside any clone, which every login shell exports, or save it through
