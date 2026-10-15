@@ -58,9 +58,6 @@
       # Chrome is an app bundle, never a PATH entry, and chrome-devtools-axi drives it.
       "google-chrome"
       "opensuperwhisper"
-      # The official client: the open-source tailscaled formula runs as a bare daemon with no menu bar
-      # app or Mac login flow, and the App Store build is sandboxed; the standalone build is the official
-      # client from Tailscale itself, with the app and the CLI.
       "tailscale-app"
       "automic-vault/isotopes/automic-vault"
     ];
