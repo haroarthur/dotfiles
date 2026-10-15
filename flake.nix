@@ -2,8 +2,7 @@
   description = "Home configuration at ~/.dotfiles for two hosts: WSL Ubuntu and Mac.";
 
   inputs = {
-    # Release branches only, never a trunk: flake.lock holds the exact revision of each, and it moves
-    # only when a bump is committed.
+    # Release branches only, never a trunk; flake.lock pins the exact revisions.
     nixpkgs-linux.url = "github:NixOS/nixpkgs/nixos-26.05";
     nixpkgs.url = "github:NixOS/nixpkgs/nixpkgs-26.05-darwin";
     nix-darwin.url = "github:nix-darwin/nix-darwin/nix-darwin-26.05";
@@ -36,7 +35,6 @@
         extraSpecialArgs = { inherit user; };
       };
 
-      # Never apply this from the WSL host.
       darwinConfigurations."mac" = nix-darwin.lib.darwinSystem {
         specialArgs = { inherit user; };
         modules = [
@@ -63,10 +61,8 @@
           echo ${builtins.unsafeDiscardStringContext self.darwinConfigurations.mac.config.system.build.toplevel.drvPath} > "$out"
         '';
 
-        # The guard rebuild.sh and bootstrap.sh build before they switch: a green build cannot tell a
-        # full profile from one missing the pane shell or the units, and activating that one stops
-        # every agent pane. The Herdr binary is install-tools.sh's now, so it is doctor.sh that
-        # answers for it rather than this.
+        # Built by rebuild.sh and bootstrap.sh before a switch: a green build cannot tell a full profile
+        # from one missing the pane shell or the units, and activating that one stops every agent pane.
         wsl-ubuntu-safe = pkgsLinux.runCommand "wsl-ubuntu-safe" { } ''
           for p in home-path/bin/zsh home-path/bin/herdr-pane-shell \
             home-files/.config/systemd/user/herdr.service home-files/.config/systemd/user/herdr-panes.slice; do

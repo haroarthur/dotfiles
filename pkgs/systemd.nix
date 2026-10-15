@@ -1,8 +1,7 @@
 { ... }:
 
-# Owns which systemctl the activation talks to - the host's own: Home Manager's pinned client is
-# newer than Ubuntu's user manager under WSL2 and cannot talk to it, so units would be written but
-# never loaded.
+# Owns which systemctl activation uses: the host's own, because Home Manager's is newer than the WSL2
+# Ubuntu user manager and cannot load units into it.
 
 {
   systemd.user.systemctlPath = "/usr/bin/systemctl";

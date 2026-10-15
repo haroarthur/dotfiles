@@ -5,11 +5,9 @@
 {
   nix.enable = false; # Determinate already manages the daemon
 
-  # Homebrew installs into /opt/homebrew/bin, and nix-darwin's /etc/zshenv REPLACES PATH with
-  # environment.systemPath, so without this the brews and casks below are unreachable from every shell
-  # this home configures - login, non-login and a Herdr pane alike. Ordered after the Nix profiles
-  # (1000) and before /usr/bin (1200); `homebrew.enableZshIntegration` would only reach /etc/zshrc,
-  # which a non-interactive login shell never reads.
+  # nix-darwin's /etc/zshenv REPLACES PATH with environment.systemPath, so without this the brews are
+  # unreachable from every shell, Herdr panes included. 1100 sits between the Nix profiles and /usr/bin;
+  # enableZshIntegration only reaches /etc/zshrc, which a non-interactive login shell skips.
   environment.systemPath = lib.mkOrder 1100 [ "/opt/homebrew/bin" ];
 
   nixpkgs.config.allowUnfree = true;
@@ -41,21 +39,19 @@
     autoMigrate = true;
   };
 
-  # Homebrew is Mac-only: the apps as casks, Herdr as an upstream brew formula.
   homebrew = {
     enable = true;
     # Leave onActivation.upgrade at its false default: rebuilds must not upgrade installed brews.
-    onActivation.cleanup = "uninstall"; # zap would also delete a cask's config dirs; Claude config must survive claude-code leaving the cask list
-    onActivation.autoUpdate = false; # pin bumps are attended; do not phone home on every switch
+    onActivation.cleanup = "uninstall"; # not zap: zap deletes a cask's config dirs, Claude's included
+    onActivation.autoUpdate = false; # bumps are attended
     onActivation.extraFlags = [ "--force" ];
-    # Listed so the bundle taps it and cleanup never untaps it. nix-homebrew leaves taps mutable, so
-    # Homebrew clones it like any `brew tap` and it needs no pinned flake input.
+    # Listed so cleanup never untaps it; nix-homebrew leaves taps mutable, so it needs no flake input.
     taps = [ "automic-vault/isotopes" ];
     brews = [ "herdr" ];
     casks = [
       "wezterm"
       "claude-code"
-      # Chrome is an app bundle, never a PATH entry, and chrome-devtools-axi drives it.
+      # Driven by chrome-devtools-axi.
       "google-chrome"
       "opensuperwhisper"
       "tailscale-app"

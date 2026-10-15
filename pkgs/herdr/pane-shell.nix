@@ -1,11 +1,8 @@
 { pkgs }:
 
-# Owns what herdr.service hands each pane as SHELL: a wrapper that puts the pane in its own bounded
-# systemd scope, so one runaway pane cannot starve the server and its siblings.
-#
-# The cgroup guard is load-bearing: this is $SHELL, so anything a pane runs as a login shell
-# re-enters it, and an unguarded second systemd-run would open a sibling scope with its own budget.
-# systemd-run is the host's own client, for the reason ../systemd.nix gives.
+# Owns the SHELL herdr.service hands each pane: a wrapper that puts the pane in its own bounded scope.
+# The cgroup guard is load-bearing: a login shell inside a pane re-enters $SHELL, and a second
+# systemd-run would open a sibling scope with its own budget. /usr/bin: see ../systemd.nix.
 
 pkgs.writeShellScriptBin "herdr-pane-shell" ''
   umask 0022

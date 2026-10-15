@@ -1,7 +1,6 @@
 { config, lib, ... }:
 
-# Owns the two shell pieces that are the WSL host's alone: bash as the login shell, and so the shell
-# a WezTerm pane comes up in, and the WezTerm OSC 7 working-directory hook.
+# Owns the WSL host's own shell pieces: bash as the login shell and the WezTerm OSC 7 hook.
 
 let
   # Percent-encodes $PWD byte by byte, in the syntax bash and zsh share - the offset stays `$i`
@@ -37,7 +36,6 @@ let
   '';
 in
 {
-  # mkAfter layers onto ./shell.nix's zsh block rather than redefining it.
   programs.zsh.initContent = lib.mkAfter osc7Zsh;
 
   programs.bash = {

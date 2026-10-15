@@ -14,9 +14,8 @@ install_nix() {
 # Piped off the web there is no BASH_SOURCE, and `set -u` makes reading it fatal, so fall back to $0.
 DIR="$(cd "$(dirname "${BASH_SOURCE[0]:-$0}")" && pwd -P)"
 
-# Step 0, only when piped (`curl ... | bash`): there is no flake.nix beside this file, so become a
-# clone and hand over to its copy. The repository is private, which makes this the one login phase 1
-# can need; stdin belongs to the pipe, so the prompts are answered at /dev/tty.
+# Step 0, only when piped (`curl ... | bash`): no flake.nix beside this file, so clone and hand over.
+# stdin belongs to the pipe, so prompts are answered at /dev/tty.
 if [ ! -f "$DIR/flake.nix" ]; then
   echo "==> Step 0: no clone here, so fetching one to ~/.dotfiles"
   [ ! -e "$HOME/.dotfiles" ] || { echo "    ~/.dotfiles already exists: run ~/.dotfiles/bootstrap.sh instead." >&2; exit 1; }
@@ -33,13 +32,11 @@ echo "==> Step 1: Determinate Nix"
 install_nix
 
 echo "==> Step 2: the account this home is configured for"
-# flake.nix names the account once, and a fresh box is often called something else: settle it before
-# anything is built, because what would be built is a home for the wrong account.
 REAL_USER="$(whoami)"
 FLAKE_USER="$(sed -nE 's/^[[:space:]]*user = "([^"]+)";.*/\1/p' "$DIR/flake.nix" | head -n1)"
 [ -n "$FLAKE_USER" ] || { echo "    Could not find the single \"user = \" line in flake.nix." >&2; exit 1; }
 if [ "$FLAKE_USER" != "$REAL_USER" ]; then
-  REPLY=y # with no terminal to ask at (a CI runner) rewriting is the only answer that lets the run continue
+  REPLY=y # no terminal to ask at (CI): rewrite
   [ ! -t 0 ] || read -r -p "    flake.nix is for \"$FLAKE_USER\" but you are \"$REAL_USER\". Rewrite its user line? [y/N] " REPLY
   case "$REPLY" in y | Y) ;; *) echo "    Declined: edit flake.nix's user line yourself, then run this again." >&2; exit 1 ;; esac
   sed -i -E "s/^([[:space:]]*user = \")[^\"]+(\";.*)/\1${REAL_USER}\2/" "$DIR/flake.nix"
@@ -59,7 +56,7 @@ nix run --no-update-lock-file --inputs-from "$HOME/.dotfiles" home-manager -- \
   switch --flake "$HOME/.dotfiles#${REAL_USER}@wsl-ubuntu" -b backup
 
 echo "==> Step 6: installer-managed tools"
-# After the switch, because only then is ~/.local/bin on PATH; it is idempotent and prints phase 2.
+# After the switch: only then is ~/.local/bin on PATH.
 "$DIR/install-tools.sh" || echo "    install-tools.sh reported failures above - re-run it; the switch itself held." >&2
 
 echo "==> Phase 1 done, and nothing in it needed a login. What is left of phase 2 - nothing, if you"

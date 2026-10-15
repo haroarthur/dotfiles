@@ -17,8 +17,7 @@ config.window_decorations = "RESIZE"
 -- splits to letters (the stock shifted punctuation is awkward on ABNT2), and skip the focus dim below.
 if wezterm.target_triple:find("windows") then
 	local act = wezterm.action
-	-- The distro name is never typed here: %USERPROFILE%\.wezterm.lua resolved this file through
-	-- wsl.exe and left the distro it came out of in WSL_DISTRO.
+	-- WSL_DISTRO is set by the %USERPROFILE%\.wezterm.lua stub windows.ps1 writes.
 	if WSL_DISTRO then
 		config.default_domain = "WSL:" .. WSL_DISTRO
 	end

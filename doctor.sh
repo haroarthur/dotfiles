@@ -1,6 +1,5 @@
 #!/usr/bin/env bash
-# Owns the read-only, advisory check of what this machine must look like to run an agent fleet: exit 0
-# means no phase-1 FAIL - what a login or another OS owns is counted apart - and it reads the live
+# Owns the read-only, advisory machine check: exit 0 means no phase-1 FAIL, and it reads the live
 # Herdr server from /proc rather than opening its socket.
 set -uo pipefail
 
@@ -51,8 +50,7 @@ same_binary() { [ "$(readlink -f "$(command -v herdr)")" = "$(server_exe)" ]; }
 # A slice is active only while a unit runs inside it, so loaded - not active - is the floor a pane needs.
 slice_loaded() { local s; s="$(systemctl --user show herdr-panes.slice -p LoadState --value)"; echo "$s"; [ "$s" = loaded ]; }
 # Panes inherit the RUNNING server's environment - not a login shell, not the unit file - so resolve under its PATH.
-# A tool that is not installed at all is already one FAIL on its own row, so this line is only about
-# the other failure: installed, and still unreachable from inside a pane.
+# An absent tool already fails its own row; this is only about installed but unreachable from a pane.
 pane_tools() {
   local path t miss=; path="$(tr '\0' '\n' < "/proc/$(server_pid)/environ" | sed -n 's/^PATH=//p' | tail -1)" || return 1
   for t in $tools_pane; do
@@ -64,8 +62,7 @@ pane_tools() {
 nm_active() { systemctl --user is-active -q "$nm" && echo "$nm"; }
 nm_root() { systemctl --user show "$nm" -p ExecStart --value | grep -q -e "--root $HOME/.no-mistakes"; }
 nm_umask() { local u; u="$(systemctl --user show "$nm" -p UMask --value)"; echo "$u"; [ "$u" = 0022 ]; }
-# On macOS Chrome is the cask hosts/darwin-mac.nix carries, an app bundle and never a PATH entry; on
-# WSL it is the .deb chrome-devtools-axi drives.
+# macOS: the cask's app bundle, never on PATH; WSL: the .deb.
 browser() {
   [ "$darwin" = no ] || { ls -d "/Applications/Google Chrome.app"; return; }
   command -v google-chrome || command -v chromium
@@ -93,8 +90,7 @@ locked_skills() {
 }
 
 case "$(uname -s)" in Darwin) darwin=yes pane_shell=zsh ;; *) darwin=no pane_shell=bash ;; esac # the shell a pane comes up in
-# tools.list owns these checks: `check` says how a tool is proven and `pane` which tools a pane must
-# resolve. It also supplies install-tools.sh's npm packages; Nix packages live in the host modules.
+# tools.list owns these checks.
 DIR="$(cd "$(dirname "${BASH_SOURCE[0]:-$0}")" && pwd -P)"
 [ -r "$DIR/tools.list" ] || { echo "no tools.list beside $0 - this clone is incomplete" >&2; exit 2; }
 tools_run='' tools_path='' tools_pane=''
@@ -143,8 +139,7 @@ linux check "pane resolves tools" "in the live pane env (restart herdr.service a
 for d in .local/bin bin; do linux check "unit PATH" "herdr.service lacks ~/$d - panes cannot resolve installer-managed tools" unit_has herdr.service "$HOME/$d"; done
 check .config/herdr "missing, or a symlink (runtime state would land in the git tree)" real_dir "$HOME/.config/herdr"
 section "agent tools"
-# tools.list's `run` rows are RUN, not just resolved: a stale shim of the right name sits on PATH and
-# then fails to exec, which `command -v` reads as green. Each is offline and sub-second.
+# `run` rows are executed, not resolved (tools.list says why); each is offline and sub-second.
 for t in $tools_run; do check "$t" "absent, or on PATH but cannot run" "$t" --version; done
 for t in $tools_path; do check "$t" "not on PATH" command -v "$t"; done
 # pkgs/no-mistakes.nix's drop-in can stop applying silently, so these three assert its EFFECT, not the file.

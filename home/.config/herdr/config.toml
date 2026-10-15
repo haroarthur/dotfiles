@@ -11,13 +11,11 @@ new_tab   = "prefix+c"
 close_tab = "prefix+ampersand"
 workspace_picker = "prefix+w"
 goto             = "prefix+g"
-copy_mode  = "prefix+y"  # herdr's copy-mode entry key; copy-mode's own internal keys (v/space select, y/Enter copy, q/Esc cancel) aren't configurable
+copy_mode  = "prefix+y"
 
 [ui]
-# Agents panel order: explicit choice of "spaces" (grouped by space, the default) over "priority".
 agent_panel_sort = "spaces"
 
 [update]
-# The pin in pkgs/herdr/package.nix is bumped by hand, so Herdr must not check for updates itself.
 version_check = false
 manifest_check = false

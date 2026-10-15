@@ -5,9 +5,8 @@
   ...
 }:
 
-# Owns Herdr on the WSL host: herdr.service, the herdr-panes slice and the shell each pane comes up
-# in. The binary itself is install-tools.sh's, through Herdr's own installer, which is why the unit
-# execs a path under ~/.local/bin rather than a store path.
+# Owns Herdr on the WSL host: herdr.service, the herdr-panes slice and the pane shell. The binary is
+# install-tools.sh's, so the unit execs ~/.local/bin/herdr.
 
 let
   herdr = "${config.home.homeDirectory}/.local/bin/herdr";
@@ -19,8 +18,7 @@ in
     (import ./pane-shell.nix { inherit pkgs; })
   ];
 
-  # The pane shell bounds one pane; this bounds the fleet, sized for this host's memory. The server
-  # and everything an operator runs outside a pane are deliberately left outside the slice.
+  # Bounds the whole fleet, sized for this host; the pane shell bounds one pane. The server stays outside.
   config.systemd.user.slices.herdr-panes = {
     # sd-switch restarts an active unit whose file changed, and stopping a slice stops every scope in
     # it, so without this an edit below would tear down every live pane on the next switch. The
@@ -40,9 +38,8 @@ in
       Documentation = "https://herdr.dev";
       StartLimitIntervalSec = 300;
       StartLimitBurst = 5;
-      # A first switch writes this unit before install-tools.sh has installed the binary; without
-      # this the start fails and takes the activation with it. install-tools.sh starts the service
-      # once the binary is there.
+      # A first switch writes this unit before the binary exists; without this the failed start fails
+      # the activation. install-tools.sh starts the service later.
       ConditionPathExists = herdr;
       # The never-kill-in-flight property: a rebuild loads a changed unit but leaves the running
       # server, and every pane scope bound to it, alone. Adopt by hand, only when quiescent.
@@ -58,10 +55,8 @@ in
       # redundant failure from marking the unit failed and leaving the fleet down at an adopt.
       ExecStop = "-${herdr} server stop";
       Environment = [
-        # The only PATH a pane, its watcher and every worker ever see: the pane shell execs bash, not
-        # a login shell, so hm-session-vars never runs. Installer-managed tools land in ~/.local/bin
-        # (claude, codex, cursor-agent, pi, treehouse, no-mistakes, the AXI CLIs); ~/bin trails it for
-        # anything hand-placed, so a real binary always wins over an older shim of the same name.
+        # The only PATH a pane and its workers see: the pane shell execs bash, not a login shell, so
+        # hm-session-vars never runs. ~/bin trails ~/.local/bin so a real binary beats an older shim.
         "PATH=${config.home.profileDirectory}/bin:${config.home.homeDirectory}/.local/bin:${config.home.homeDirectory}/bin:/nix/var/nix/profiles/default/bin:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin"
         # The stable profile path, so new panes adopt a changed pane shell while keep-old leaves the
         # server itself untouched.

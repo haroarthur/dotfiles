@@ -1,7 +1,6 @@
 { ... }:
 
-# Owns the modules every host shares, which is none yet: each host imports what it needs directly,
-# because those modules encode that host's own contracts.
+# Owns the modules every host shares - none yet; each host imports its own.
 
 {
   imports = [ ];

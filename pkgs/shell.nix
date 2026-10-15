@@ -4,19 +4,17 @@
 
 {
   home.packages = with pkgs; [
-    ripgrep # fast search
-    fd # fast find
-    fzf # fuzzy finder
-    jq # json on the command line
+    ripgrep
+    fd
+    fzf
+    jq
     lazygit
     neovim
   ];
 
   home.sessionVariables.EDITOR = "nvim";
 
-  # Installer-managed tools land in ~/.local/bin (claude, codex, cursor-agent, pi, the AXI tools,
-  # no-mistakes), and Home Manager puts it on PATH for no shell by itself. ~/bin stays on PATH for
-  # anything hand-placed there; nothing this repo installs targets it.
+  # Installer-managed tools land in ~/.local/bin, which Home Manager puts on no PATH by itself.
   home.sessionPath = [
     "$HOME/.local/bin"
     "$HOME/bin"
@@ -24,8 +22,8 @@
 
   programs.zsh = {
     enable = true;
-    autosuggestion.enable = true; # ghost text from history
-    syntaxHighlighting.enable = true; # commands turn green when valid
+    autosuggestion.enable = true;
+    syntaxHighlighting.enable = true;
     initContent = ''
       bindkey '^f' autosuggest-accept
     '';

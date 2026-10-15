@@ -5,9 +5,7 @@
   ...
 }:
 
-# Owns what both hosts share: the shared npm toolchain, the rulebook links, the Claude session flags
-# and the private secrets export, the editable pointers into home/, the one skills symlink, the
-# program settings policy and the Herdr config seed.
+# Owns what both hosts share: links into home/ and ~/.agents, session flags, secrets and program settings.
 
 let
   # An out-of-store link under $HOME, so an edit in the clone is live with no rebuild.
@@ -29,16 +27,14 @@ in
     CLAUDE_CODE_ENABLE_FUNCTION_HOOKS = "1";
   };
 
-  # Secrets never enter this repository: a private ~/.secrets.env of KEY=value lines, kept outside any
-  # clone, is exported beside the flags above - TYPESAFE_API_KEY for compact-adviser, for one
-  # (README.md#compact-adviser). The option is Home Manager-internal, but it is the one way into
-  # hm-session-vars.sh, the file every login shell on both hosts already sources.
+  # A private ~/.secrets.env (KEY=value, outside any clone). The option is Home Manager-internal, but it
+  # is the one way into hm-session-vars.sh, which every login shell sources.
   home.sessionVariablesExtra = ''
     if [ -r "$HOME/.secrets.env" ]; then set -a; . "$HOME/.secrets.env"; set +a; fi
   '';
 
   home.file = {
-    # One rulebook, linked into every harness; a link costs nothing while the harness is absent.
+    # One rulebook, linked into every harness.
     ".claude/CLAUDE.md".source = link ".dotfiles/home/AGENTS.md";
     ".codex/AGENTS.md".source = link ".dotfiles/home/AGENTS.md";
     ".config/opencode/AGENTS.md".source = link ".dotfiles/home/AGENTS.md";
@@ -51,18 +47,14 @@ in
     ".config/nvim".source = link ".dotfiles/home/.config/nvim";
     ".config/wezterm".source = link ".dotfiles/home/.config/wezterm";
 
-    # Pi: only the authored files, so credentials and sessions stay local. settings.json is not here -
-    # it is managed below, with Claude's.
+    # Pi: only the authored files, so credentials and sessions stay local.
     ".pi/agent/themes".source = link ".dotfiles/home/.pi/agent/themes";
     ".pi/agent/extensions".source = link ".dotfiles/home/.pi/agent/extensions";
     ".pi/agent/models.json".source = link ".dotfiles/home/.pi/agent/models.json";
   };
 
-  # Claude's, Cursor's and Pi's settings are writable files, never links: each program owns live
-  # preferences that must not dirty the clone. Claude and Cursor merge the `attribution` object of
-  # their tracked file on every activation, preserving all other live keys while making attribution
-  # opt-outs non-regressing.
-  # Pi has no commit or PR attribution setting, so its tracked file remains a day-one seed only.
+  # Writable files, never links: each program rewrites its own. Claude's and Cursor's get their tracked
+  # `attribution` merged on every activation; Pi's is a day-one seed.
   home.activation.manageProgramSettings =
     lib.hm.dag.entryBetween [ "reloadSystemd" ] [ "writeBoundary" ]
       (
@@ -102,9 +94,8 @@ in
         + seed ".pi/agent/settings.json" ../home/.pi/agent/settings.json
       );
 
-  # Herdr's config is seeded, never linked: Herdr rewrites config.toml and keeps its sockets, logs
-  # and sessions beside it, which must not land in the git tree. Only an absent file is written,
-  # before the systemd reload so a first activation leaves a config for the service.
+  # Seeded, never linked: Herdr rewrites config.toml and keeps sockets, logs and sessions beside it.
+  # Before the systemd reload, so a first activation leaves a config for the service.
   home.activation.seedHomeHerdrConfig =
     lib.hm.dag.entryBetween [ "reloadSystemd" ] [ "writeBoundary" ]
       ''

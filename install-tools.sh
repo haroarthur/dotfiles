@@ -1,8 +1,6 @@
 #!/usr/bin/env bash
-# Owns running the official installer of every tool the packing does not carry: every step is
-# idempotent so re-running it is the repair. `gh auth login` is the one thing a person must type.
-# Everything else is done here - including the one apt package, which asks for this machine's
-# password, and the private skills checkout once the login exists.
+# Owns running the official installer of every tool the packing does not carry; every step is
+# idempotent, so re-running it is the repair.
 set -uo pipefail
 
 # One installer failing must not hide the others, nor leave the operator guessing which to re-run.
@@ -12,8 +10,6 @@ step() { printf '\n==> %s\n' "$1"; current="$1"; }
 note_failure() { failed="${failed}
   - ${current}: $1"; echo "    FAILED: $1" >&2; }
 
-# tools.list supplies npm packages below and doctor.sh's tool checks. Other rows may name tools
-# supplied by their own installer or by a host's Nix packages.
 DIR="$(cd "$(dirname "${BASH_SOURCE[0]:-$0}")" && pwd -P)"
 [ -r "$DIR/tools.list" ] || { echo "no tools.list beside $0 - this clone is incomplete" >&2; exit 2; }
 npm_pkgs=() npm_soft=() npm_bins=()
@@ -43,11 +39,8 @@ else
 fi
 
 step "compact-adviser plugin for Claude Code"
-# A plugin, not a tool, so not in tools.list. It loads only while CLAUDE_CODE_ENABLE_FUNCTION_HOOKS=1,
-# which hosts/common.nix exports; the key is a one-time step by hand (README.md#compact-adviser).
-# The Claude installer lands in ~/.local/bin, which a first Mac run does not have on PATH yet.
-# Its stdin is /dev/null on purpose: under the piped bootstrap it is /dev/tty, where Claude's Bun
-# runtime died on a fresh Mac with `EINVAL: invalid argument, kqueue` and installed nothing.
+# ~/.local/bin is not on a first Mac run's PATH yet. stdin is /dev/null on purpose: under the piped
+# bootstrap it is /dev/tty, where Claude's Bun runtime died with `EINVAL: invalid argument, kqueue`.
 claude_path="$HOME/.local/bin:$PATH"
 if ! PATH="$claude_path" command -v claude >/dev/null 2>&1; then echo "    no claude - the step above says why"
 elif grep -qF '"compact-adviser@compact-adviser"' "$HOME/.claude/plugins/installed_plugins.json" 2>/dev/null; then
@@ -65,9 +58,8 @@ mkdir -p "$HOME/.local/bin"
 step "Treehouse"
 if command -v treehouse >/dev/null 2>&1; then echo "    present: $(command -v treehouse)"
 else
-  # It targets ~/.local/bin only when that is already on PATH, else it asks for sudo. It resolves its
-  # version through an unauthenticated api.github.com call, which fails whenever this IP's 60/hour
-  # quota is spent - routine under an agent fleet: `curl -sS https://api.github.com/rate_limit`.
+  # It targets ~/.local/bin only when that is on PATH, else it asks for sudo. Its version lookup is an
+  # unauthenticated api.github.com call, which fails once this IP's 60/hour quota is spent.
   run_installer https://raw.githubusercontent.com/kunchenguid/treehouse/main/docs/install.sh \
     env "PATH=$HOME/.local/bin:$PATH" \
     || note_failure "treehouse install.sh (often the unauthenticated github api quota - re-run later)"
@@ -75,7 +67,6 @@ fi
 
 step "npm tools: the AXI CLIs, the harness CLIs and backpass - every npm row of tools.list"
 # Node's own prefix is a read-only store path; ~/.local/bin is on the PATH every pane inherits.
-# A package name is not its binary's name, which is why tools.list carries both columns.
 if ! command -v npm >/dev/null 2>&1; then
   note_failure "npm is required for the AXI and harness tools"
   required_failed=1
@@ -104,8 +95,7 @@ else
 fi
 
 step "Herdr"
-# The fleet's terminal server, installed by its own installer into ~/.local/bin - the exact path
-# pkgs/herdr/module.nix's unit execs. On the Mac it is the brew hosts/darwin-mac.nix carries.
+# Into ~/.local/bin, the exact path pkgs/herdr/module.nix's unit execs.
 if [ "$(uname -s)" = Darwin ]; then echo "    Mac: the herdr brew comes with the switch"
 elif command -v herdr >/dev/null 2>&1; then echo "    present: $(command -v herdr)"
 else
@@ -126,11 +116,8 @@ else
 fi
 
 step "Google Cloud SDK (gcloud, bq)"
-# The analytics work runs on these two. The env vars are the documented way to run the installer
-# unattended, and with prompts off it edits no rc file. Each tool resolves its own SDK root through
-# the link it was called by, so a link from ~/.local/bin - already on every pane's PATH - is enough.
-# The tarball ships bin/gcloud and its installer adds bq, so an install that died halfway (no Python
-# it could use) leaves a gcloud and no bq: that half is removed and installed again, never kept.
+# With prompts off the installer edits no rc file, and each tool finds its SDK root through the link
+# it was called by. An install that died halfway (no usable Python) leaves gcloud without bq: redo it.
 sdk="$HOME/google-cloud-sdk"
 if [ -x "$sdk/bin/bq" ]; then
   if "$sdk/bin/gcloud" --version >/dev/null 2>&1; then echo "    present: $sdk/bin/gcloud"
@@ -168,8 +155,7 @@ else
 fi
 
 step "Google Chrome"
-# chrome-devtools-axi drives it. The Mac takes the cask hosts/darwin-mac.nix carries; on WSL it is a
-# .deb, and the one step here that asks for this machine's password - a user path cannot install one.
+# WSL only: a .deb, the one step that asks for a password - a user path cannot install one.
 if [ "$(uname -s)" = Darwin ]; then echo "    Mac: the google-chrome cask comes with the switch"
 elif command -v google-chrome >/dev/null 2>&1; then echo "    present: $(command -v google-chrome)"
 else
@@ -185,9 +171,7 @@ else
 fi
 
 step "Capability skills"
-# ~/.agents (haroarthur/agents) owns the skill list, and its install.sh re-runs every `npx skills
-# add`. The repository is private, so the clone is the first thing phase 2 can do, and it happens
-# here rather than by hand. Before the login there is nothing to clone: that box is still in phase 1.
+# ~/.agents (private) owns the skill list, so it can be cloned only once the login exists.
 if [ ! -e "$HOME/.agents" ]; then
   if gh auth status >/dev/null 2>&1; then
     git clone https://github.com/haroarthur/agents.git "$HOME/.agents" || note_failure "git clone haroarthur/agents"
@@ -199,8 +183,6 @@ if [ -x "$HOME/.agents/install.sh" ]; then
   "$HOME/.agents/install.sh" || note_failure "$HOME/.agents/install.sh (re-run it; each add is idempotent)"
 fi
 
-# Logged in before the bootstrap - the order README.md#start-here documents - the step above already
-# took ~/.agents, and there is no second run to ask for. Without a login there still is.
 if [ -e "$HOME/.agents" ]; then
   cat <<'EOF'
 
