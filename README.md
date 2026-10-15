@@ -287,7 +287,11 @@ uses Funnel.
 Remote Login is enabled by hand in System Settings, not by this repository. Limit it to your own user
 (Allow access for: only these users) so no other account can log in.
 
-Later, not set up: `tailscale serve` for Lavish boards, ACLs.
+To view a Lavish board: while connected in Termius, add a Port Forwarding rule of type Local, phone
+port 4387 to `127.0.0.1:4387` on the Mac host, then open the board link (`http://127.0.0.1:4387/...`)
+in the phone browser. This needs no `tailscale serve`.
+
+Later, not set up: ACLs.
 
 ### Skills and Firstmate
 
