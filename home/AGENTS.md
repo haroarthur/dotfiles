@@ -8,10 +8,17 @@
 - For one-off or infrequent operational work, start with the simplest direct end-to-end path. Do not build wrappers, control planes, policy layers, custom verifiers, or automation unless the direct path exposes a concrete blocker or repeated need that justifies the added machinery.
 - When doing bug fixes, always start with reproducing the bug in an E2E setting as closely aligned with how an end user would experience it as possible.
   This makes sure you find the real problem so your fix will actually solve it.
+  Then fix the first place where the system went wrong, not where the symptom showed; a guard is a fix only when the state it handles is legitimate.
+  If two fixes that share one premise fail, test the premise before you write a third.
 - When end-to-end testing a product, be picky about the UI you see and be obsessed with pixel perfection.
   If something clearly looks off, even if it is not directly related to what you are doing, try to get it fixed along the way.
 - Apply that same high standard to engineering excellence: lint, test failures, and test flakiness.
   If you see one, even if it is not caused by what you are working on right now, still get it fixed.
+- Keep a code comment only when it explains a non-obvious reason that the code cannot show. Delete narration, section banners, commented-out code and justifications for workarounds, and change the code instead.
+- Solve the problem with the least code left behind: remove dead code, redundant checks and one-caller wrappers before you add anything, and add nothing the problem does not need.
+- Before you write logic, name the data shape and the structure that holds it, such as a state machine, a lookup table or a typed model, instead of growing scattered conditionals.
+- If running something can answer a question about behavior, timing or output, run it instead of asking.
+- Give each claim its evidence, or label it inferred or a guess, and prove the one fact a change's safety depends on by running real code.
 - Before using "dynamic workflows", "ultra code" or any harness feature that immediately spawns a large swarm of subagents, always explain the tradeoffs and ask the user for explicit approval.
 
 ## Maintaining this file
