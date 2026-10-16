@@ -7,3 +7,4 @@ result-*
 # runtime state (sockets, logs, session files that can carry terminal output) and must never be committed.
 home/.config/herdr/*
 !home/.config/herdr/config.toml
+home/.pi/agent/extensions/herdr-agent-state.ts
