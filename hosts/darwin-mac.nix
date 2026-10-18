@@ -53,7 +53,9 @@
       "claude-code"
       # Driven by chrome-devtools-axi.
       "google-chrome"
+      "maccy"
       "opensuperwhisper"
+      "rectangle"
       "tailscale-app"
       "automic-vault/isotopes/automic-vault"
     ];
