@@ -70,6 +70,14 @@
           done
           touch "$out"
         '';
+
+        transcript-archive = pkgsLinux.runCommand "transcript-archive-test" {
+          nativeBuildInputs = [
+            (import ./pkgs/transcript-archive/package.nix { pkgs = pkgsLinux; })
+            pkgsLinux.age
+            pkgsLinux.zstd
+          ];
+        } "bash ${./pkgs/transcript-archive/test.sh} && touch $out";
       };
     };
 }

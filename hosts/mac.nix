@@ -14,6 +14,7 @@
     ../pkgs
     # Never ../pkgs/shell-wsl.nix: bash as a login shell and the OSC 7 hook are the WSL host's alone.
     ../pkgs/shell.nix
+    ../pkgs/transcript-archive/module.nix
   ];
 
   home.username = lib.mkDefault user;
