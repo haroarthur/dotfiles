@@ -20,6 +20,7 @@
 - If running something can answer a question about behavior, timing or output, run it instead of asking.
 - Give each claim its evidence, or label it inferred or a guess, and prove the one fact a change's safety depends on by running real code.
 - Before using "dynamic workflows", "ultra code" or any harness feature that immediately spawns a large swarm of subagents, always explain the tradeoffs and ask the user for explicit approval.
+- Never search from `/` or `~`: scope `find`, `rg`, `fd` and `du` to the repository or a named directory, and look up known locations in the records first.
 
 ## Maintaining this file
 
