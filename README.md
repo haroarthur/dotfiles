@@ -243,7 +243,8 @@ when it is safe to `/compact`.
 2. **The rulebook.** `home/AGENTS.md` is linked into Claude, Codex, OpenCode, Grok and Pi. Write your
    own.
 3. **Your own configs.** WezTerm and nvim link into `home/`, so an edit is live with no rebuild. Pi's
-   `settings.json` is a seed; Claude's and Cursor's get only their attribution policy re-merged.
+   `settings.json` is a seed; Claude's and Cursor's get only their attribution policy re-merged, plus
+   Claude's `cleanupPeriodDays` (180 days of transcripts instead of the default 30).
 4. **Packages and tools.** Base packages are plain names in `hosts/wsl-ubuntu.nix` or
    `hosts/mac.nix`. An installer-brought tool is one line in [tools.list](tools.list) and a re-run of
    `install-tools.sh` - never a rebuild.

@@ -53,8 +53,8 @@ in
     ".pi/agent/models.json".source = link ".dotfiles/home/.pi/agent/models.json";
   };
 
-  # Writable files, never links: each program rewrites its own. Claude's and Cursor's get their tracked
-  # `attribution` merged on every activation; Pi's is a day-one seed.
+  # Writable files, never links: each program rewrites its own. Claude's and Cursor's get the named
+  # tracked keys merged on every activation; Pi's is a day-one seed.
   home.activation.manageProgramSettings =
     lib.hm.dag.entryBetween [ "reloadSystemd" ] [ "writeBoundary" ]
       (
@@ -67,7 +67,7 @@ in
               run ${pkgs.coreutils}/bin/install -m 0644 -- ${source} "$settings_target"
             fi
           '';
-          merge = target: seedFile: ''
+          merge = target: seedFile: keys: ''
             settings_target="${config.home.homeDirectory}/${target}"
             settings_dir="$(${pkgs.coreutils}/bin/dirname "$settings_target")"
             run ${pkgs.coreutils}/bin/install -d -m 0755 -- "$settings_dir"
@@ -75,7 +75,7 @@ in
               run ${pkgs.coreutils}/bin/install -m 0644 -- ${seedFile} "$settings_target"
             else
               settings_tmp="$(${pkgs.coreutils}/bin/mktemp "$settings_dir/.settings.XXXXXX")"
-              if ! ${pkgs.jq}/bin/jq --null-input --slurpfile policy ${seedFile} 'input * ($policy[0] | {attribution})' "$settings_target" > "$settings_tmp"; then
+              if ! ${pkgs.jq}/bin/jq --null-input --slurpfile policy ${seedFile} 'input * ($policy[0] | {${keys}})' "$settings_target" > "$settings_tmp"; then
                 ${pkgs.coreutils}/bin/rm -f -- "$settings_tmp"
                 echo "Cannot merge managed settings into $settings_target" >&2
                 exit 1
@@ -89,8 +89,8 @@ in
             fi
           '';
         in
-        merge ".claude/settings.json" ../home/.claude/settings.json
-        + merge ".cursor/cli-config.json" ../home/.cursor/cli-config.json
+        merge ".claude/settings.json" ../home/.claude/settings.json "attribution, cleanupPeriodDays"
+        + merge ".cursor/cli-config.json" ../home/.cursor/cli-config.json "attribution"
         + seed ".pi/agent/settings.json" ../home/.pi/agent/settings.json
       );
 
