@@ -1,4 +1,5 @@
 {
+  config,
   pkgs,
   lib,
   user,
@@ -36,4 +37,21 @@
   # nixpkgs wraps gh, so a bare `gh auth setup-git` records the hidden store path of `.gh-wrapped`,
   # which a gh bump and the next garbage collection delete. This makes it record plain `gh`.
   home.sessionVariables.GH_PATH = "gh";
+
+  # 180 days instead of Claude's 30, so the self-learning loop has its transcripts.
+  home.activation.claudeTranscriptRetention = lib.hm.dag.entryAfter [ "manageProgramSettings" ] ''
+    claude_settings="${config.home.homeDirectory}/.claude/settings.json"
+    claude_tmp="$(${pkgs.coreutils}/bin/mktemp "$claude_settings.XXXXXX")"
+    if ! ${pkgs.jq}/bin/jq '.cleanupPeriodDays = 180' "$claude_settings" > "$claude_tmp"; then
+      ${pkgs.coreutils}/bin/rm -f -- "$claude_tmp"
+      echo "Cannot set cleanupPeriodDays in $claude_settings" >&2
+      exit 1
+    fi
+    if ! ${pkgs.diffutils}/bin/cmp -s -- "$claude_settings" "$claude_tmp"; then
+      run ${pkgs.coreutils}/bin/chmod 0644 "$claude_tmp"
+      run ${pkgs.coreutils}/bin/mv -f -- "$claude_tmp" "$claude_settings"
+    else
+      ${pkgs.coreutils}/bin/rm -f -- "$claude_tmp"
+    fi
+  '';
 }
