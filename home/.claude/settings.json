@@ -3,7 +3,6 @@
     "commit": "",
     "pr": ""
   },
-  "cleanupPeriodDays": 180,
   "theme": "dark-ansi",
   "statusLine": {
     "type": "command",
