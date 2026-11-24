@@ -4,7 +4,8 @@ A bootstrap for two machines: a Windows notebook running WSL Ubuntu, and a Mac. 
 `~/.dotfiles` brings either one up from nothing - Nix, Home Manager, the shell, the terminal, the
 editor, the agent tooling - and stays the place they are changed from afterwards.
 
-It is one flake, two host compositions and a handful of hand-run scripts. Nothing runs on a timer.
+It is one flake, two host compositions and a handful of hand-run scripts. One job runs on a timer:
+the Mac's [transcript archive](#claude-transcript-archive).
 
 ## What is in it
 
@@ -12,7 +13,7 @@ It is one flake, two host compositions and a handful of hand-run scripts. Nothin
 | --- | --- |
 | `flake.nix` | The two configurations and the checks that gate a switch. Its one `user =` line names the account; every configuration name and home path derives from it |
 | `hosts/` | One file per machine - `wsl-ubuntu.nix`, `mac.nix` + `darwin-mac.nix` - plus `common.nix` for what they share |
-| `pkgs/` | What the hosts compose: the shared shell, and the WSL host's floor (Herdr, the host `systemctl`, the no-mistakes drop-in) |
+| `pkgs/` | What the hosts compose: the shared shell, the WSL host's floor (Herdr, the host `systemctl`, the no-mistakes drop-in) and the Mac's transcript archive |
 | `home/` | Authored files the home takes: the agent rulebook, nvim and WezTerm as live links; Claude and Cursor policy merged into writable settings; Pi and Herdr seeds the programs then own |
 | `bootstrap.sh` / `bootstrap-mac.sh` | A fresh machine, from nothing to a built home |
 | `rebuild.sh` / `rebuild-mac.sh` | A later change to a machine already running this |
@@ -136,8 +137,8 @@ is idempotent, so re-running it is the repair, and a failure names the step to r
 `home-manager switch`: a profile without Herdr's units or the pane shell would stop every agent
 pane. Nothing overrides it; a hand-run `home-manager switch` goes around it.
 
-**`nix flake check`** builds the WSL generation, runs that guard and evaluates the Mac; CI runs it on
-every pull request and push to `main`. The full bootstrap on clean runners
+**`nix flake check`** builds the WSL generation, runs that guard and the transcript archive test, and
+evaluates the Mac; CI runs it on every pull request and push to `main`. The full bootstrap on clean runners
 ([bootstrap-check.yml](.github/workflows/bootstrap-check.yml)) is opt-in. Run `nix fmt` before
 committing, and `git add` new files - Nix cannot see them otherwise.
 
@@ -178,6 +179,37 @@ Three casks on the Mac are apps, not tools, and each needs a person after the re
   because unattended jobs use them.
 - **Tailscale** (`tailscale-app`) reaches this Mac from a phone. Nothing signs in for you; see
   [Reaching the Mac from a phone](#reaching-the-mac-from-a-phone).
+
+### Claude transcript archive
+
+On the Mac, [pkgs/transcript-archive/](pkgs/transcript-archive/) keeps Claude Code's raw session
+transcripts (`~/.claude/projects/**/*.jsonl`) for good. A launchd agent runs daily at 12:00 and
+archives every finished month that has no record yet:
+
+- A month holds the transcripts last written in it. A session that goes on into a later month is
+  archived again with that month.
+- Each month is one `tar`, compressed with `zstd -19 --long=27`, written to
+  `~/Library/CloudStorage/OneDrive-Personal/Private/Archive/claude-transcripts/` as
+  `claude-transcripts-YYYY-MM.tar.zst` with a `.sha256` beside it. The log records each month's raw
+  and compressed bytes.
+- A month is recorded in `~/.local/state/claude-transcript-archive/YYYY-MM.sha256` only after the
+  copy in the local OneDrive folder matches its checksum and compares byte for byte with the source
+  files. The job does not verify that OneDrive uploaded it; check that in OneDrive itself.
+- It deletes nothing. Claude's own 180-day `cleanupPeriodDays` ([hosts/mac.nix](hosts/mac.nix)) is
+  what removes local transcripts, so a month can be lost only if the archive fails for months.
+- While the last run failed, or no run has succeeded for 3 days, every new zsh prints a red
+  `claude-transcript-archive:` line. `claude-transcript-archive status` prints the same, and its log is
+  `~/.local/state/claude-transcript-archive/log`.
+
+Set it up once, at the Mac, after the rebuild:
+
+1. Make the folder: `mkdir -p ~/Library/CloudStorage/OneDrive-Personal/Private/Archive/claude-transcripts`.
+2. Run the job once: `launchctl kickstart gui/$(id -u)/org.nix-community.home.claude-transcript-archive`.
+   macOS asks whether bash may access files managed by OneDrive. Allow it: this is the job's one
+   grant. Then `claude-transcript-archive status` should say `copied through ...`.
+
+To restore a month:
+`zstd -dc claude-transcripts-YYYY-MM.tar.zst | tar -x -C <dir>`.
 
 ### Reaching the Mac from a phone
 
