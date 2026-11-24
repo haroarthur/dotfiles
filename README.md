@@ -137,8 +137,8 @@ is idempotent, so re-running it is the repair, and a failure names the step to r
 `home-manager switch`: a profile without Herdr's units or the pane shell would stop every agent
 pane. Nothing overrides it; a hand-run `home-manager switch` goes around it.
 
-**`nix flake check`** builds the WSL generation, runs that guard and evaluates the Mac; CI runs it on
-every pull request and push to `main`. The full bootstrap on clean runners
+**`nix flake check`** builds the WSL generation, runs that guard and the transcript archive test, and
+evaluates the Mac; CI runs it on every pull request and push to `main`. The full bootstrap on clean runners
 ([bootstrap-check.yml](.github/workflows/bootstrap-check.yml)) is opt-in. Run `nix fmt` before
 committing, and `git add` new files - Nix cannot see them otherwise.
 
