@@ -1,11 +1,11 @@
 # Owns the archive itself: each finished month of Claude transcripts, by last write, goes to DEST as one
-# encrypted archive, recorded only after the copy there passes a checksum and a full test-extract.
+# zstd-compressed tar, recorded only after the copy there passes a checksum and a full test-extract.
+# That copy is OneDrive's local folder; whether OneDrive uploads it is not something this job checks.
 # It deletes nothing local; Claude's own cleanupPeriodDays is the only thing that does.
 # Launchd runs it with /bin/bash 3.2 (module.nix says why), so no bash 4 features.
 
 src="$HOME/.claude/projects"
 state="$HOME/.local/state/claude-transcript-archive"
-identity="$HOME/.config/claude-transcript-archive/age-identity"
 work='' partial='' reason=''
 
 log() { echo "$(date -u +%FT%TZ) $*"; }
@@ -20,7 +20,7 @@ finish() {
   [ -z "$partial" ] || rm -f -- "$partial"
   if [ "$rc" -eq 0 ]; then
     rm -f -- "$state/failed"
-    touch -- "$state/ok"
+    echo "$dest" >"$state/ok"
   else
     reason="${reason:-exited with status $rc}"
     log "FAILED: $reason"
@@ -30,7 +30,7 @@ finish() {
 
 archive() {
   month="$1"
-  name="claude-transcripts-$month.tar.zst.age"
+  name="claude-transcripts-$month.tar.zst"
   [ -d "$dest" ] || die "$dest is missing - is OneDrive running and signed in?"
   [ ! -e "$dest/$name" ] || die "$dest/$name exists but $state has no record of it; move it aside to archive $month again"
 
@@ -38,15 +38,14 @@ archive() {
   count="$(tr -cd '\0' <"$work/list" | wc -c)"
   log "$month: archiving $count files"
   tar -C "$src" --null --verbatim-files-from -T "$work/list" -cf - |
-    zstd -q -T0 -19 --long=27 |
-    age -e -i "$identity" -o "$work/$name"
+    zstd -q -T0 -19 --long=27 -o "$work/$name"
   sum="$(sha256sum "$work/$name" | cut -d ' ' -f 1)"
 
   partial="$dest/$name.partial"
   cp -- "$work/$name" "$partial"
   [ "$(sha256sum "$partial" | cut -d ' ' -f 1)" = "$sum" ] || die "$month: the copy in $dest does not match its checksum"
   # --compare reads every member back and diffs it against the source byte for byte; -v lists each one.
-  checked="$(age -d -i "$identity" "$partial" | zstd -dq | tar -C "$src" --compare -v -f - | wc -l)" ||
+  checked="$(zstd -dq <"$partial" | tar -C "$src" --compare -v -f - | wc -l)" ||
     die "$month: the copy in $dest failed its test-extract"
   [ "$checked" -eq "$count" ] || die "$month: the test-extract matched $checked of $count files"
 
@@ -54,7 +53,9 @@ archive() {
   partial=''
   echo "$sum  $name" >"$dest/$name.sha256"
   echo "$sum  $name" >"$state/$month.sha256"
-  log "$month: $count files, $(stat -c %s "$dest/$name") bytes, sha256 $sum -> $dest/$name"
+  raw="$(cd "$src" && du -cb --files0-from="$work/list" | tail -n 1 | cut -f 1)"
+  log "$month: $count files, $raw bytes raw, $(stat -c %s "$dest/$name") bytes compressed, sha256 $sum -> $dest/$name"
+  rm -f -- "$work/$name" "$work/list"
 }
 
 run() {
@@ -63,7 +64,6 @@ run() {
   exec >>"$state/log" 2>&1
   trap finish EXIT
   [ -d "$src" ] || die "$src is missing"
-  [ -r "$identity" ] || die "no age identity at $identity - see the README's transcript archive setup"
   work="$(mktemp -d)"
   current="$(date +%Y-%m)"
   for month in $(find "$src" -name '*.jsonl' -type f -printf '%TY-%Tm\n' | sort -u); do
@@ -84,7 +84,7 @@ status() {
   fi
   last="$(find "$state" -name '*.sha256' -printf '%f\n' | sort | tail -n 1)"
   last="${last%.sha256}"
-  echo "ok, archived through ${last:-no month yet}"
+  echo "copied through ${last:-no month yet} to $(cat "$state/ok"); OneDrive upload not verified by this job"
 }
 
 case "${1:-} $#" in

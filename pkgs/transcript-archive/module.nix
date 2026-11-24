@@ -10,7 +10,6 @@ in
 {
   home.packages = [
     archive
-    pkgs.age
     pkgs.zstd
   ];
 

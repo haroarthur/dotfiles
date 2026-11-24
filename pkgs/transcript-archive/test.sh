@@ -1,5 +1,6 @@
 # Owns the archive's behaviour test, on temporary fixtures only; flake.nix runs it as a check.
-# The command runs through the `bash` on PATH, as launchd runs it, so a Mac run proves bash 3.2.
+# The command runs through the `bash` on PATH, as launchd runs it: CI runs it under Linux bash, and only
+# a manual Mac run with /bin/bash first on PATH proves bash 3.2.
 set -euo pipefail
 
 fail() {
@@ -8,12 +9,11 @@ fail() {
   exit 1
 }
 archive() { bash "$(command -v claude-transcript-archive)" "$@"; }
-listing() { age -d -i "$key" "$dest/claude-transcripts-$1.tar.zst.age" | zstd -dq | tar -t | sort; }
+listing() { zstd -dq <"$dest/claude-transcripts-$1.tar.zst" | tar -t | sort; }
 
 HOME="$(mktemp -d)"
 export HOME
 src="$HOME/.claude/projects" dest="$HOME/onedrive" state="$HOME/.local/state/claude-transcript-archive"
-key="$HOME/.config/claude-transcript-archive/age-identity"
 
 # Claude names project folders after their path, so they start with a dash, which tar must not parse.
 mkdir -p "$src/-Users-test-a/sub" "$src/b"
@@ -28,20 +28,16 @@ touch -d '2024-02-01 00:30' "$src/b/three.jsonl"
 touch -d '2024-01-10 10:00' "$src/b/notes.txt"
 
 ! archive status >/dev/null || fail "status is ok before any run"
-! archive run "$dest" || fail "ran without an identity"
-grep -q 'no age identity' "$state/failed" || fail "no failure marker for a missing identity"
-if s="$(archive status)"; then fail "status is ok after a failure"; fi
-case "$s" in "FAILED "*"no age identity"*) ;; *) fail "status: $s" ;; esac
-
-mkdir -p "$(dirname "$key")"
-age-keygen -o "$key" 2>/dev/null
 ! archive run "$dest" || fail "ran without a destination"
-grep -q "$dest is missing" "$state/failed" || fail "no failure marker for a missing destination"
+if s="$(archive status)"; then fail "status is ok after a failure"; fi
+case "$s" in "FAILED "*"$dest is missing"*) ;; *) fail "status: $s" ;; esac
 
 mkdir "$dest"
 archive run "$dest" || fail "the run failed"
 [ ! -e "$state/failed" ] || fail "a success left the failure marker"
-[ "$(archive status)" = "ok, archived through 2024-02" ] || fail "status: $(archive status)"
+[ "$(archive status)" = "copied through 2024-02 to $dest; OneDrive upload not verified by this job" ] ||
+  fail "status: $(archive status)"
+grep -q '2024-01: 2 files, 8 bytes raw, ' "$state/log" || fail "the log lacks 2024-01's raw size"
 [ "$(find "$dest" -type f | wc -l)" -eq 4 ] || fail "want two archives and two checksums: $(ls "$dest")"
 (cd "$dest" && sha256sum --quiet -c ./*.sha256) || fail "a checksum file does not match its archive"
 [ "$(listing 2024-01)" = "$(printf '%s\n' -Users-test-a/one.jsonl -Users-test-a/sub/two.jsonl)" ] ||

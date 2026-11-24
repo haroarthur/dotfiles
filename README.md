@@ -188,11 +188,13 @@ archives every finished month that has no record yet:
 
 - A month holds the transcripts last written in it. A session that goes on into a later month is
   archived again with that month.
-- Each month is one `tar`, compressed with `zstd -19 --long=27` and encrypted with `age`, written to
+- Each month is one `tar`, compressed with `zstd -19 --long=27`, written to
   `~/Library/CloudStorage/OneDrive-Personal/Private/Archive/claude-transcripts/` as
-  `claude-transcripts-YYYY-MM.tar.zst.age` with a `.sha256` beside it.
+  `claude-transcripts-YYYY-MM.tar.zst` with a `.sha256` beside it. The log records each month's raw
+  and compressed bytes.
 - A month is recorded in `~/.local/state/claude-transcript-archive/YYYY-MM.sha256` only after the
-  OneDrive copy matches its checksum, decrypts and compares byte for byte with the source files.
+  copy in the local OneDrive folder matches its checksum and compares byte for byte with the source
+  files. The job does not verify that OneDrive uploaded it; check that in OneDrive itself.
 - It deletes nothing. Claude's own 180-day `cleanupPeriodDays` ([hosts/mac.nix](hosts/mac.nix)) is
   what removes local transcripts, so a month can be lost only if the archive fails for months.
 - While the last run failed, or no run has succeeded for 3 days, every new zsh prints a red
@@ -202,15 +204,12 @@ archives every finished month that has no record yet:
 Set it up once, at the Mac, after the rebuild:
 
 1. Make the folder: `mkdir -p ~/Library/CloudStorage/OneDrive-Personal/Private/Archive/claude-transcripts`.
-2. Make the key: `install -d -m 700 ~/.config/claude-transcript-archive && age-keygen -o ~/.config/claude-transcript-archive/age-identity`.
-   Copy the `AGE-SECRET-KEY-` line into your password manager. Never put it in OneDrive or a
-   repository: without it no archive can be read.
-3. Run the job once: `launchctl kickstart gui/$(id -u)/org.nix-community.home.claude-transcript-archive`.
+2. Run the job once: `launchctl kickstart gui/$(id -u)/org.nix-community.home.claude-transcript-archive`.
    macOS asks whether bash may access files managed by OneDrive. Allow it: this is the job's one
-   grant. Then `claude-transcript-archive status` should say `ok`.
+   grant. Then `claude-transcript-archive status` should say `copied through ...`.
 
 To restore a month:
-`age -d -i ~/.config/claude-transcript-archive/age-identity claude-transcripts-YYYY-MM.tar.zst.age | zstd -d | tar -x -C <dir>`.
+`zstd -dc claude-transcripts-YYYY-MM.tar.zst | tar -x -C <dir>`.
 
 ### Reaching the Mac from a phone
 

@@ -5,7 +5,6 @@
 pkgs.writeShellApplication {
   name = "claude-transcript-archive";
   runtimeInputs = with pkgs; [
-    age
     coreutils
     findutils
     gnused
